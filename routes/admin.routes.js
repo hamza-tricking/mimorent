@@ -130,6 +130,11 @@ router.get('/users/:id',
   })
 );
 
+// Test route to verify admin routes are working
+router.get('/test-route', (req, res) => {
+  res.json({ message: 'Admin routes are working', timestamp: new Date().toISOString() });
+});
+
 // POST /api/admin/users - Create new user
 router.post('/users',
   auth,

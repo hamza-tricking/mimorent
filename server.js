@@ -16,7 +16,7 @@ connectDB();
 app.use(helmet());
 
 app.use(cors({
-  origin: frontendUrl,
+  origin: ['http://localhost:3000', 'https://dmtart.pro/mimorent/', frontendUrl],
   credentials: true
 }));
 

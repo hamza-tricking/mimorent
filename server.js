@@ -52,6 +52,10 @@ app.get('/', (req, res) => {
   });
 });
 
+app.get('/mimorent', (req, res) => {
+  res.send('Hello from Mimorent');
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,

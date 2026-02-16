@@ -11,6 +11,9 @@ const { errorHandler, notFound } = require('./middlewares/error.middleware');
 
 const app = express();
 
+// Trust proxy for rate limiting when behind reverse proxy
+app.set('trust proxy', 1);
+
 connectDB();
 
 app.use(helmet());

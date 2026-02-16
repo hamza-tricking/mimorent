@@ -52,16 +52,16 @@ router.post('/register',
 
 router.post('/login',
   asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    if (!email || !password) {
-      return sendBadRequest(res, 'Please provide email and password');
+    if (!username || !password) {
+      return sendBadRequest(res, 'Please provide username and password');
     }
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ username }).select('+password');
 
     if (!user || !(await user.comparePassword(password))) {
-      return sendUnauthorized(res, 'Invalid email or password');
+      return sendUnauthorized(res, 'Invalid username or password');
     }
 
     if (!user.isActive) {
@@ -76,6 +76,7 @@ router.post('/login',
     sendSuccess(res, 'Login successful', {
       user: {
         id: user._id,
+        username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,

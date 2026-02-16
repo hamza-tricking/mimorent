@@ -16,24 +16,25 @@ const createAdmin = async () => {
     // Check if admin already exists
     const existingAdmin = await User.findOne({ username: 'mimoadmin' });
     if (existingAdmin) {
-      console.log('Admin user already exists');
-      process.exit(0);
+      console.log('Updating existing admin user...');
+      // Update existing admin with correct password
+      existingAdmin.password = 'adminmimo'; // Will be hashed by pre-save hook
+      await existingAdmin.save();
+      console.log('Admin user updated successfully:');
+    } else {
+      console.log('Creating new admin user...');
+      // Create admin user (password will be hashed automatically by pre-save hook)
+      const admin = await User.create({
+        username: 'mimoadmin',
+        password: 'adminmimo', // Plain text - will be hashed by model pre-save hook
+        firstName: 'MIMO',
+        lastName: 'Admin',
+        email: 'admin@mimo.com',
+        role: 'admin',
+        isActive: true
+      });
+      console.log('Admin user created successfully:');
     }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('adminmimo', salt);
-
-    // Create admin user
-    const admin = await User.create({
-      username: 'mimoadmin',
-      password: hashedPassword,
-      firstName: 'MIMO',
-      lastName: 'Admin',
-      email: 'admin@mimo.com',
-      role: 'admin',
-      isActive: true
-    });
 
     console.log('Admin user created successfully:');
     console.log('Username: mimoadmin');

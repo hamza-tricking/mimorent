@@ -1,24 +1,18 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('./models/user.model');
-
-// Database connection
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect('mongodb://localhost:27017/mimorent', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log('MongoDB Connected...');
-  } catch (error) {
-    console.error('Database connection error:', error);
-    process.exit(1);
-  }
-};
+const { mongodbUri } = require('./config/env');
 
 // Create admin user
 const createAdmin = async () => {
   try {
+    // Connect to database using the same config as server
+    await mongoose.connect(mongodbUri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('MongoDB Connected...');
+
     // Check if admin already exists
     const existingAdmin = await User.findOne({ username: 'mimoadmin' });
     if (existingAdmin) {
@@ -54,9 +48,4 @@ const createAdmin = async () => {
 };
 
 // Run the script
-const run = async () => {
-  await connectDB();
-  await createAdmin();
-};
-
-run();
+createAdmin();

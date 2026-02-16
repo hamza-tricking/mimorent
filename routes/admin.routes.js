@@ -134,23 +134,29 @@ router.get('/users/:id',
 router.post('/users',
   auth,
   adminOnly,
-  ...createUserValidation,
   asyncHandler(async (req, res) => {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return sendError(res, 'Validation failed', 400, errors.array());
-    }
-
     try {
-      const { username, email, firstName, lastName, phone, role, password, isActive } = req.body;
+      const { username, password, email, firstName, lastName, phone, role, isActive } = req.body;
+
+      // Simple validation
+      if (!username || !password) {
+        return sendError(res, 'Username and password are required', 400);
+      }
+
+      if (username.length < 3) {
+        return sendError(res, 'Username must be at least 3 characters', 400);
+      }
+
+      if (password.length < 6) {
+        return sendError(res, 'Password must be at least 6 characters', 400);
+      }
 
       // Check if user already exists
       const existingUser = await User.findOne({
         $or: [
           { username: username.toLowerCase() },
-          { email: email.toLowerCase() }
-        ]
+          { email: email?.toLowerCase() }
+        ].filter(Boolean)
       });
 
       if (existingUser) {

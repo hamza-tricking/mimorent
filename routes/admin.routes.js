@@ -63,6 +63,7 @@ router.get('/users',
   adminOnly,
   asyncHandler(async (req, res) => {
     try {
+      console.log('GET /api/admin/users called');
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
       const skip = (page - 1) * limit;
@@ -134,6 +135,18 @@ router.get('/users/:id',
 router.get('/test-route', (req, res) => {
   res.json({ message: 'Admin routes are working', timestamp: new Date().toISOString() });
 });
+
+// Test GET users route
+router.get('/test-users', auth, adminOnly, asyncHandler(async (req, res) => {
+  try {
+    console.log('Test GET users route called');
+    const users = await User.find().select('-password').limit(5);
+    sendSuccess(res, 'Test users retrieved successfully', { users });
+  } catch (error) {
+    console.error('Test GET users error:', error);
+    sendError(res, 'Failed to retrieve test users', error);
+  }
+}));
 
 // POST /api/admin/users - Create new user
 router.post('/users',

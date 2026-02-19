@@ -71,7 +71,12 @@ const updateReservationValidation = [
     .optional()
     .isIn(['pending', 'approved', 'cancelled']).withMessage('Invalid status')
 ];
-
+console.log({
+  auth,
+  employerOnly,
+  createReservationValidation,
+  asyncHandler
+})
 // POST /api/admin/reservations - Create new reservation
 router.post('/',
   auth,

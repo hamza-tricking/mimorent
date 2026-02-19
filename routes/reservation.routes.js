@@ -9,6 +9,15 @@ const Property = require('../models/property.model');
 const User = require('../models/user.model');
 const { body, validationResult } = require('express-validator');
 
+// Helper function to handle validation results
+const handleValidationErrors = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return sendError(res, 'Validation failed', 400, errors.array());
+  }
+  return null;
+};
+
 // Validation rules for reservation creation
 const createReservationValidation = [
   body('propertyId')
@@ -69,10 +78,8 @@ router.post('/',
   createReservationValidation,
   asyncHandler(async (req, res) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return sendError(res, 'Validation failed', 400, errors.array());
-      }
+      const validationError = handleValidationErrors(req, res);
+      if (validationError) return;
 
       const { propertyId, customerName, customerPhone, startDate, endDate, totalPrice, status } = req.body;
 
@@ -207,10 +214,8 @@ router.put('/:id',
   updateReservationValidation,
   asyncHandler(async (req, res) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return sendError(res, 'Validation failed', 400, errors.array());
-      }
+      const validationError = handleValidationErrors(req, res);
+      if (validationError) return;
 
       const { customerName, customerPhone, startDate, endDate, totalPrice, status } = req.body;
       const reservationId = req.params.id;

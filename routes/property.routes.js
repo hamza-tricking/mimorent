@@ -30,9 +30,16 @@ const createPropertyValidation = [
     .isArray().withMessage('Images must be an array'),
   body('images.*')
     .optional()
-    .isURL().withMessage('Each image must be a valid URL')
-    .or()
-    .matches(/^\/uploads\/.+\.(jpg|jpeg|png|gif|webp)$/i).withMessage('Invalid image path format'),
+    .custom((value) => {
+      if (!value) return true;
+      // Check if it's a valid URL or a valid local path
+      const isUrl = /^https?:\/\/.+/.test(value);
+      const isLocalPath = /^\/uploads\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(value);
+      if (!isUrl && !isLocalPath) {
+        throw new Error('Each image must be a valid URL or valid local path');
+      }
+      return true;
+    }),
   body('available')
     .optional()
     .isBoolean().withMessage('Available must be a boolean')

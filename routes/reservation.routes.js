@@ -13,9 +13,10 @@ const { body, validationResult } = require('express-validator');
 const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return sendError(res, 'Validation failed', 400, errors.array());
+    sendError(res, 'Validation failed', 400, errors.array());
+    return true; // Return true when there's an error
   }
-  return null;
+  return false; // Return false when no errors
 };
 
 // Validation rules for reservation creation
@@ -78,8 +79,8 @@ router.post('/',
   createReservationValidation,
   asyncHandler(async (req, res) => {
     try {
-      const validationError = handleValidationErrors(req, res);
-      if (validationError) return;
+      const hasValidationError = handleValidationErrors(req, res);
+      if (hasValidationError) return;
 
       const { propertyId, customerName, customerPhone, startDate, endDate, totalPrice, status } = req.body;
 
@@ -214,8 +215,8 @@ router.put('/:id',
   updateReservationValidation,
   asyncHandler(async (req, res) => {
     try {
-      const validationError = handleValidationErrors(req, res);
-      if (validationError) return;
+      const hasValidationError = handleValidationErrors(req, res);
+      if (hasValidationError) return;
 
       const { customerName, customerPhone, startDate, endDate, totalPrice, status } = req.body;
       const reservationId = req.params.id;

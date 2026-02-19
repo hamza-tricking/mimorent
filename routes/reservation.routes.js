@@ -9,16 +9,6 @@ const Property = require('../models/property.model');
 const User = require('../models/user.model');
 const { body, validationResult } = require('express-validator');
 
-// Helper function to handle validation results
-const handleValidationErrors = (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    sendError(res, 'Validation failed', 400, errors.array());
-    return true; // Return true when there's an error
-  }
-  return false; // Return false when no errors
-};
-
 // Validation rules for reservation creation
 const createReservationValidation = [
   body('propertyId')
@@ -79,8 +69,10 @@ router.post('/',
   createReservationValidation,
   asyncHandler(async (req, res) => {
     try {
-      const hasValidationError = handleValidationErrors(req, res);
-      if (hasValidationError) return;
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return sendError(res, 'Validation failed', 400, errors.array());
+      }
 
       const { propertyId, customerName, customerPhone, startDate, endDate, totalPrice, status } = req.body;
 
@@ -94,35 +86,18 @@ router.post('/',
         return sendError(res, 'Property is not available for reservation', 400);
       }
 
-      // Check if property is available for the requested dates
-      const isAvailable = await Reservation.checkAvailability(
-        propertyId, 
-        new Date(startDate), 
-        new Date(endDate)
-      );
-
-      if (!isAvailable) {
-        return sendError(res, 'Property is not available for the requested dates', 409);
-      }
-
-      const reservation = new Reservation({ 
-        propertyId, 
-        employerId: req.user._id, // Get employer ID from authenticated user
-        customerName, 
-        customerPhone, 
-        startDate: new Date(startDate), 
-        endDate: new Date(endDate), 
+      // Create reservation
+      const reservation = new Reservation({
+        propertyId,
+        customerName,
+        customerPhone,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
         totalPrice,
         status: status || 'pending'
       });
-      
-      await reservation.save();
 
-      // Populate related data for response
-      await reservation.populate([
-        { path: 'propertyId', select: 'title pricePerDay wilayaId' },
-        { path: 'employerId', select: 'name email' }
-      ]);
+      await reservation.save();
 
       sendSuccess(res, 'Reservation created successfully', { reservation }, 201);
     } catch (error) {
@@ -141,9 +116,6 @@ router.get('/',
       const limit = parseInt(req.query.limit) || 10;
       const skip = (page - 1) * limit;
       const search = req.query.search || '';
-      const status = req.query.status;
-      const propertyId = req.query.propertyId;
-      const employerId = req.query.employerId;
 
       // Build filter object
       const filter = {};
@@ -153,19 +125,9 @@ router.get('/',
           { customerPhone: { $regex: search, $options: 'i' } }
         ];
       }
-      if (status) {
-        filter.status = status;
-      }
-      if (propertyId) {
-        filter.propertyId = propertyId;
-      }
-      if (employerId) {
-        filter.employerId = employerId;
-      }
 
       const reservations = await Reservation.find(filter)
-        .populate('propertyId', 'title pricePerDay')
-        .populate('employerId', 'name email')
+        .populate('propertyId', 'title description pricePerDay wilayaId')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -194,9 +156,8 @@ router.get('/:id',
   asyncHandler(async (req, res) => {
     try {
       const reservation = await Reservation.findById(req.params.id)
-        .populate('propertyId', 'title description pricePerDay wilayaId')
-        .populate('employerId', 'name email');
-      
+        .populate('propertyId', 'title description pricePerDay wilayaId');
+
       if (!reservation) {
         return sendError(res, 'Reservation not found', 404);
       }
@@ -215,8 +176,10 @@ router.put('/:id',
   updateReservationValidation,
   asyncHandler(async (req, res) => {
     try {
-      const hasValidationError = handleValidationErrors(req, res);
-      if (hasValidationError) return;
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return sendError(res, 'Validation failed', 400, errors.array());
+      }
 
       const { customerName, customerPhone, startDate, endDate, totalPrice, status } = req.body;
       const reservationId = req.params.id;
@@ -227,39 +190,15 @@ router.put('/:id',
         return sendError(res, 'Reservation not found', 404);
       }
 
-      // If dates are changing, check availability
-      if (startDate || endDate) {
-        const newStartDate = startDate ? new Date(startDate) : reservation.startDate;
-        const newEndDate = endDate ? new Date(endDate) : reservation.endDate;
-        
-        const isAvailable = await Reservation.checkAvailability(
-          reservation.propertyId,
-          newStartDate,
-          newEndDate,
-          reservationId
-        );
-
-        if (!isAvailable) {
-          return sendError(res, 'Property is not available for the requested dates', 409);
-        }
-
-        reservation.startDate = newStartDate;
-        reservation.endDate = newEndDate;
-      }
-
       // Update reservation
       if (customerName) reservation.customerName = customerName;
       if (customerPhone) reservation.customerPhone = customerPhone;
+      if (startDate) reservation.startDate = new Date(startDate);
+      if (endDate) reservation.endDate = new Date(endDate);
       if (totalPrice) reservation.totalPrice = totalPrice;
       if (status) reservation.status = status;
 
       await reservation.save();
-
-      // Populate related data for response
-      await reservation.populate([
-        { path: 'propertyId', select: 'title pricePerDay' },
-        { path: 'employerId', select: 'name email' }
-      ]);
 
       sendSuccess(res, 'Reservation updated successfully', { reservation });
     } catch (error) {
@@ -301,31 +240,17 @@ router.get('/property/:propertyId',
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
       const skip = (page - 1) * limit;
-      const status = req.query.status;
 
-      // Check if property exists
-      const property = await Property.findById(propertyId);
-      if (!property) {
-        return sendError(res, 'Property not found', 404);
-      }
-
-      // Build filter object
-      const filter = { propertyId };
-      if (status) {
-        filter.status = status;
-      }
-
-      const reservations = await Reservation.find(filter)
-        .populate('employerId', 'name email')
-        .sort({ startDate: -1 })
+      const reservations = await Reservation.find({ propertyId })
+        .populate('propertyId', 'title description pricePerDay wilayaId')
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
 
-      const total = await Reservation.countDocuments(filter);
+      const total = await Reservation.countDocuments({ propertyId });
 
       sendSuccess(res, 'Reservations retrieved successfully', {
         reservations,
-        property: { title: property.title, pricePerDay: property.pricePerDay },
         pagination: {
           page,
           limit,
@@ -349,31 +274,17 @@ router.get('/employer/:employerId',
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
       const skip = (page - 1) * limit;
-      const status = req.query.status;
 
-      // Check if employer exists
-      const employer = await User.findById(employerId);
-      if (!employer) {
-        return sendError(res, 'Employer not found', 404);
-      }
-
-      // Build filter object
-      const filter = { employerId };
-      if (status) {
-        filter.status = status;
-      }
-
-      const reservations = await Reservation.find(filter)
-        .populate('propertyId', 'title pricePerDay')
-        .sort({ startDate: -1 })
+      const reservations = await Reservation.find({ employerId })
+        .populate('propertyId', 'title description pricePerDay wilayaId')
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
 
-      const total = await Reservation.countDocuments(filter);
+      const total = await Reservation.countDocuments({ employerId });
 
       sendSuccess(res, 'Reservations retrieved successfully', {
         reservations,
-        employer: { name: employer.name, email: employer.email },
         pagination: {
           page,
           limit,

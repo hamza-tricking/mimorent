@@ -9,7 +9,7 @@ const officeSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Office email is required'],
+    required: false,
     unique: true,
     lowercase: true,
     trim: true,
@@ -20,24 +20,24 @@ const officeSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: [true, 'Office phone is required'],
+    required: false,
     trim: true,
     maxlength: [20, 'Phone number cannot exceed 20 characters']
   },
   address: {
     street: {
       type: String,
-      required: [true, 'Street address is required'],
+      required: false,
       trim: true
     },
     city: {
       type: String,
-      required: [true, 'City is required'],
+      required: false,
       trim: true
     },
     wilaya: {
       type: String,
-      required: [true, 'Wilaya is required'],
+      required: false,
       trim: true
     },
     zipCode: {
@@ -48,7 +48,7 @@ const officeSchema = new mongoose.Schema({
   manager: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Office manager is required']
+    required: false
   },
   employees: [{
     type: mongoose.Schema.Types.ObjectId,

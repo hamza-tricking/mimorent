@@ -146,7 +146,7 @@ router.put('/:id',
       }
 
       // Check if another wilaya with same name exists
-      if (name) {
+      if (name && name !== wilaya.name) {
         const existingWilaya = await Wilaya.findOne({
           _id: { $ne: wilayaId },
           name

@@ -15,9 +15,10 @@ const createWilayaValidation = [
     .notEmpty().withMessage('Wilaya name is required')
     .isLength({ max: 50 }).withMessage('Wilaya name cannot exceed 50 characters')
     .trim(),
-  body('code')
-    .notEmpty().withMessage('Wilaya code is required')
-    .isInt({ min: 1, max: 58 }).withMessage('Wilaya code must be between 1 and 58')
+  body('image')
+    .optional()
+    .isURL().withMessage('Image must be a valid URL')
+    .trim()
 ];
 
 // Validation rules for wilaya update
@@ -26,9 +27,10 @@ const updateWilayaValidation = [
     .optional()
     .isLength({ max: 50 }).withMessage('Wilaya name cannot exceed 50 characters')
     .trim(),
-  body('code')
+  body('image')
     .optional()
-    .isInt({ min: 1, max: 58 }).withMessage('Wilaya code must be between 1 and 58')
+    .isURL().withMessage('Image must be a valid URL')
+    .trim()
 ];
 
 // POST /api/admin/wilayas - Create new wilaya
@@ -43,18 +45,16 @@ router.post('/',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { name, code } = req.body;
+      const { name, image } = req.body;
 
-      // Check if wilaya with same name or code already exists
-      const existingWilaya = await Wilaya.findOne({
-        $or: [{ name }, { code }]
-      });
+      // Check if wilaya with same name already exists
+      const existingWilaya = await Wilaya.findOne({ name });
 
       if (existingWilaya) {
-        return sendError(res, 'Wilaya with this name or code already exists', 409);
+        return sendError(res, 'Wilaya with this name already exists', 409);
       }
 
-      const wilaya = new Wilaya({ name, code });
+      const wilaya = new Wilaya({ name, image });
       await wilaya.save();
 
       sendSuccess(res, 'Wilaya created successfully', { wilaya }, 201);
@@ -79,13 +79,12 @@ router.get('/',
       const filter = {};
       if (search) {
         filter.$or = [
-          { name: { $regex: search, $options: 'i' } },
-          { code: search }
+          { name: { $regex: search, $options: 'i' } }
         ];
       }
 
       const wilayas = await Wilaya.find(filter)
-        .sort({ code: 1 })
+        .sort({ name: 1 })
         .skip(skip)
         .limit(limit);
 
@@ -137,7 +136,7 @@ router.put('/:id',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { name, code } = req.body;
+      const { name, image } = req.body;
       const wilayaId = req.params.id;
 
       // Check if wilaya exists
@@ -146,24 +145,21 @@ router.put('/:id',
         return sendError(res, 'Wilaya not found', 404);
       }
 
-      // Check if another wilaya with same name or code exists
-      if (name || code) {
+      // Check if another wilaya with same name exists
+      if (name) {
         const existingWilaya = await Wilaya.findOne({
           _id: { $ne: wilayaId },
-          $or: [
-            ...(name ? [{ name }] : []),
-            ...(code ? [{ code }] : [])
-          ]
+          name
         });
 
         if (existingWilaya) {
-          return sendError(res, 'Wilaya with this name or code already exists', 409);
+          return sendError(res, 'Wilaya with this name already exists', 409);
         }
       }
 
       // Update wilaya
       if (name) wilaya.name = name;
-      if (code) wilaya.code = code;
+      if (image) wilaya.image = image;
 
       await wilaya.save();
 

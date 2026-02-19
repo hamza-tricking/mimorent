@@ -2,6 +2,14 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: [true, 'Username is required'],
+    unique: true,
+    trim: true,
+    minlength: [3, 'Username must be at least 3 characters long'],
+    maxlength: [50, 'Username cannot exceed 50 characters']
+  },
   name: {
     type: String,
     required: [true, 'Name is required'],
@@ -10,8 +18,9 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
+    required: false,
     unique: true,
+    sparse: true, // Allows multiple null values for unique constraint
     lowercase: true,
     trim: true,
     match: [
@@ -54,6 +63,7 @@ const userSchema = new mongoose.Schema({
 
 // Indexes for better query performance
 userSchema.index({ email: 1 });
+userSchema.index({ username: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ officeId: 1 });
 userSchema.index({ createdAt: -1 });

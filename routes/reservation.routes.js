@@ -14,6 +14,9 @@ const createReservationValidation = [
   body('propertyId')
     .notEmpty().withMessage('Property ID is required')
     .isMongoId().withMessage('Invalid Property ID'),
+  body('employerId')
+    .notEmpty().withMessage('Employer ID is required')
+    .isMongoId().withMessage('Invalid Employer ID'),
   body('customerName')
     .notEmpty().withMessage('Customer name is required')
     .isLength({ max: 100 }).withMessage('Customer name cannot exceed 100 characters')
@@ -74,7 +77,7 @@ router.post('/',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { propertyId, customerName, customerPhone, startDate, endDate, totalPrice, status } = req.body;
+      const { propertyId, customerName, customerPhone, startDate, endDate, totalPrice, status, employerId } = req.body;
 
       // Check if property exists and is available
       const property = await Property.findById(propertyId);
@@ -89,6 +92,7 @@ router.post('/',
       // Create reservation
       const reservation = new Reservation({
         propertyId,
+        employerId,
         customerName,
         customerPhone,
         startDate: new Date(startDate),

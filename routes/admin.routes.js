@@ -5,6 +5,8 @@ const { adminOnly } = require('../middlewares/role.middleware');
 const { sendSuccess, sendError } = require('../utils/response.util');
 const { asyncHandler } = require('../middlewares/error.middleware');
 const User = require('../models/user.model');
+const Property = require('../models/property.model');
+const Office = require('../models/office.model');
 const { body, validationResult } = require('express-validator');
 
 // Validation rules for user creation
@@ -283,6 +285,361 @@ router.delete('/users/:id',
       sendSuccess(res, 'User deleted successfully');
     } catch (error) {
       sendError(res, 'Failed to delete user', error);
+    }
+  })
+);
+
+// GET /api/admin/properties - Get all properties with pagination and filtering
+router.get('/properties',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+      const search = req.query.search || '';
+      const type = req.query.type || '';
+      const status = req.query.status || '';
+
+      // Build filter object
+      const filter = {};
+      if (search) {
+        filter.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { wilaya: { $regex: search, $options: 'i' } },
+          { city: { $regex: search, $options: 'i' } }
+        ];
+      }
+      if (type) {
+        filter.type = type;
+      }
+      if (status) {
+        filter.status = status;
+      }
+
+      const properties = await Property.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      const total = await Property.countDocuments(filter);
+
+      sendSuccess(res, 'Properties retrieved successfully', {
+        properties,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      });
+    } catch (error) {
+      sendError(res, 'Failed to retrieve properties', error);
+    }
+  })
+);
+
+// GET /api/admin/properties/:id - Get single property by ID
+router.get('/properties/:id',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const property = await Property.findById(req.params.id);
+      
+      if (!property) {
+        return sendError(res, 'Property not found', 404);
+      }
+
+      sendSuccess(res, 'Property retrieved successfully', { property });
+    } catch (error) {
+      sendError(res, 'Failed to retrieve property', error);
+    }
+  })
+);
+
+// POST /api/admin/properties - Create new property
+router.post('/properties',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const propertyData = req.body;
+
+      // Create new property
+      const property = new Property(propertyData);
+      await property.save();
+
+      sendSuccess(res, 'Property created successfully', {
+        property
+      }, 201);
+    } catch (error) {
+      sendError(res, 'Failed to create property', error);
+    }
+  })
+);
+
+// PUT /api/admin/properties/:id - Update property
+router.put('/properties/:id',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const propertyId = req.params.id;
+      const updates = req.body;
+
+      // Remove sensitive fields that shouldn't be updated directly
+      delete updates._id;
+      delete updates.createdAt;
+      delete updates.updatedAt;
+
+      const property = await Property.findByIdAndUpdate(
+        propertyId,
+        updates,
+        { new: true, runValidators: true }
+      );
+
+      if (!property) {
+        return sendError(res, 'Property not found', 404);
+      }
+
+      sendSuccess(res, 'Property updated successfully', { property });
+    } catch (error) {
+      sendError(res, 'Failed to update property', error);
+    }
+  })
+);
+
+// PATCH /api/admin/properties/:id/toggle-status - Toggle property status
+router.patch('/properties/:id/toggle-status',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const propertyId = req.params.id;
+      const property = await Property.findById(propertyId);
+
+      if (!property) {
+        return sendError(res, 'Property not found', 404);
+      }
+
+      // Toggle between 'available' and 'unavailable'
+      property.status = property.status === 'available' ? 'unavailable' : 'available';
+      await property.save();
+
+      sendSuccess(res, 'Property status updated successfully', {
+        property: {
+          id: property._id,
+          title: property.title,
+          status: property.status
+        }
+      });
+    } catch (error) {
+      sendError(res, 'Failed to update property status', error);
+    }
+  })
+);
+
+// DELETE /api/admin/properties/:id - Delete property
+router.delete('/properties/:id',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const propertyId = req.params.id;
+      const property = await Property.findById(propertyId);
+
+      if (!property) {
+        return sendError(res, 'Property not found', 404);
+      }
+
+      await Property.findByIdAndDelete(propertyId);
+
+      sendSuccess(res, 'Property deleted successfully');
+    } catch (error) {
+      sendError(res, 'Failed to delete property', error);
+    }
+  })
+);
+
+// GET /api/admin/offices - Get all offices with pagination and filtering
+router.get('/offices',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+      const search = req.query.search || '';
+      const isActive = req.query.isActive;
+
+      // Build filter object
+      const filter = {};
+      if (search) {
+        filter.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } },
+          { 'address.city': { $regex: search, $options: 'i' } },
+          { 'address.wilaya': { $regex: search, $options: 'i' } }
+        ];
+      }
+      if (isActive !== undefined) {
+        filter.isActive = isActive === 'true';
+      }
+
+      const offices = await Office.find(filter)
+        .populate('manager', 'firstName lastName email')
+        .populate('employees', 'firstName lastName email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      const total = await Office.countDocuments(filter);
+
+      sendSuccess(res, 'Offices retrieved successfully', {
+        offices,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      });
+    } catch (error) {
+      sendError(res, 'Failed to retrieve offices', error);
+    }
+  })
+);
+
+// GET /api/admin/offices/:id - Get single office by ID
+router.get('/offices/:id',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const office = await Office.findById(req.params.id)
+        .populate('manager', 'firstName lastName email')
+        .populate('employees', 'firstName lastName email');
+      
+      if (!office) {
+        return sendError(res, 'Office not found', 404);
+      }
+
+      sendSuccess(res, 'Office retrieved successfully', { office });
+    } catch (error) {
+      sendError(res, 'Failed to retrieve office', error);
+    }
+  })
+);
+
+// POST /api/admin/offices - Create new office
+router.post('/offices',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const officeData = req.body;
+
+      // Create new office
+      const office = new Office(officeData);
+      await office.save();
+
+      // Populate manager and employees for response
+      await office.populate('manager', 'firstName lastName email');
+      await office.populate('employees', 'firstName lastName email');
+
+      sendSuccess(res, 'Office created successfully', {
+        office
+      }, 201);
+    } catch (error) {
+      sendError(res, 'Failed to create office', error);
+    }
+  })
+);
+
+// PUT /api/admin/offices/:id - Update office
+router.put('/offices/:id',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const officeId = req.params.id;
+      const updates = req.body;
+
+      // Remove sensitive fields that shouldn't be updated directly
+      delete updates._id;
+      delete updates.createdAt;
+      delete updates.updatedAt;
+
+      const office = await Office.findByIdAndUpdate(
+        officeId,
+        updates,
+        { new: true, runValidators: true }
+      ).populate('manager', 'firstName lastName email')
+       .populate('employees', 'firstName lastName email');
+
+      if (!office) {
+        return sendError(res, 'Office not found', 404);
+      }
+
+      sendSuccess(res, 'Office updated successfully', { office });
+    } catch (error) {
+      sendError(res, 'Failed to update office', error);
+    }
+  })
+);
+
+// PATCH /api/admin/offices/:id/toggle-status - Toggle office active status
+router.patch('/offices/:id/toggle-status',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const officeId = req.params.id;
+      const office = await Office.findById(officeId);
+
+      if (!office) {
+        return sendError(res, 'Office not found', 404);
+      }
+
+      office.isActive = !office.isActive;
+      await office.save();
+
+      sendSuccess(res, 'Office status updated successfully', {
+        office: {
+          id: office._id,
+          name: office.name,
+          isActive: office.isActive
+        }
+      });
+    } catch (error) {
+      sendError(res, 'Failed to update office status', error);
+    }
+  })
+);
+
+// DELETE /api/admin/offices/:id - Delete office
+router.delete('/offices/:id',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const officeId = req.params.id;
+      const office = await Office.findById(officeId);
+
+      if (!office) {
+        return sendError(res, 'Office not found', 404);
+      }
+
+      await Office.findByIdAndDelete(officeId);
+
+      sendSuccess(res, 'Office deleted successfully');
+    } catch (error) {
+      sendError(res, 'Failed to delete office', error);
     }
   })
 );

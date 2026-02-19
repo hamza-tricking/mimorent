@@ -27,9 +27,12 @@ const createAdmin = async () => {
       const admin = await User.create({
         username: 'mimoadmin',
         name: 'MIMO Admin',
+        firstName: 'MIMO',
+        lastName: 'Admin',
         password: 'adminmimo', // Plain text - will be hashed by model pre-save hook
         email: null, // Email not required
-        role: 'admin'
+        role: 'admin',
+        isActive: true
       });
       console.log('Admin user created successfully');
     }

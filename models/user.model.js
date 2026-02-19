@@ -16,6 +16,18 @@ const userSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Name cannot exceed 100 characters']
   },
+  firstName: {
+    type: String,
+    required: [true, 'First name is required'],
+    trim: true,
+    maxlength: [50, 'First name cannot exceed 50 characters']
+  },
+  lastName: {
+    type: String,
+    required: [true, 'Last name is required'],
+    trim: true,
+    maxlength: [50, 'Last name cannot exceed 50 characters']
+  },
   email: {
     type: String,
     required: false,
@@ -54,6 +66,27 @@ const userSchema = new mongoose.Schema({
       },
       message: 'Office ID is required for employers'
     }
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  lastLogin: {
+    type: Date
+  },
+  phone: {
+    type: String,
+    trim: true
+  },
+  address: {
+    type: String,
+    trim: true
+  },
+  dateOfBirth: {
+    type: Date
+  },
+  avatar: {
+    type: String
   }
 }, {
   timestamps: true,
@@ -95,6 +128,11 @@ userSchema.methods.isAdmin = function() {
 userSchema.methods.isEmployer = function() {
   return this.role === 'employer';
 };
+
+// Virtual field for full name
+userSchema.virtual('fullName').get(function() {
+  return `${this.firstName} ${this.lastName}`.trim();
+});
 
 const User = mongoose.model('User', userSchema);
 

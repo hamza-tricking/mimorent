@@ -7,81 +7,27 @@ const officeSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Office name cannot exceed 100 characters']
   },
-  email: {
+  address: {
     type: String,
-    required: false,
-    unique: true,
-    lowercase: true,
+    required: [true, 'Address is required'],
     trim: true,
-    match: [
-      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-      'Please enter a valid email address'
-    ]
+    maxlength: [200, 'Address cannot exceed 200 characters']
   },
   phone: {
     type: String,
-    required: false,
+    required: [true, 'Phone number is required'],
     trim: true,
     maxlength: [20, 'Phone number cannot exceed 20 characters']
   },
-  address: {
-    street: {
-      type: String,
-      required: false,
-      trim: true
-    },
-    city: {
-      type: String,
-      required: false,
-      trim: true
-    },
-    wilaya: {
-      type: String,
-      required: false,
-      trim: true
-    },
-    zipCode: {
-      type: String,
-      trim: true
-    }
-  },
-  manager: {
+  wilayaId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: false
+    ref: 'Wilaya',
+    required: [true, 'Wilaya reference is required']
   },
-  employees: [{
+  employers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }],
-  description: {
-    type: String,
-    trim: true,
-    maxlength: [1000, 'Description cannot exceed 1000 characters']
-  },
-  logo: {
-    type: String,
-    trim: true
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  workingHours: {
-    monday: { open: String, close: String },
-    tuesday: { open: String, close: String },
-    wednesday: { open: String, close: String },
-    thursday: { open: String, close: String },
-    friday: { open: String, close: String },
-    saturday: { open: String, close: String },
-    sunday: { open: String, close: String }
-  },
-  socialMedia: {
-    website: { type: String, trim: true },
-    facebook: { type: String, trim: true },
-    instagram: { type: String, trim: true },
-    linkedin: { type: String, trim: true }
-  }
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -89,34 +35,13 @@ const officeSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-officeSchema.index({ name: 'text', description: 'text' });
-officeSchema.index({ 'address.wilaya': 1 });
-officeSchema.index({ manager: 1 });
-officeSchema.index({ isActive: 1 });
-officeSchema.index({ email: 1 });
+officeSchema.index({ name: 1 });
+officeSchema.index({ wilayaId: 1 });
+officeSchema.index({ employers: 1 });
 
-// Virtual for full address
-officeSchema.virtual('fullAddress').get(function() {
-  return `${this.address.street}, ${this.address.city}, ${this.address.wilaya}`;
-});
-
-// Static method to find active offices
-officeSchema.statics.findActive = function(filters = {}) {
-  return this.find({ ...filters, isActive: true });
-};
-
-// Instance method to check if office is open
-officeSchema.methods.isOpen = function() {
-  const now = new Date();
-  const day = now.toLocaleDateString('en-US', { weekday: 'lowercase' });
-  const currentTime = now.toTimeString().slice(0, 5);
-  
-  const todayHours = this.workingHours[day];
-  if (!todayHours || !todayHours.open || !todayHours.close) {
-    return false;
-  }
-  
-  return currentTime >= todayHours.open && currentTime <= todayHours.close;
+// Static method to find offices by wilaya
+officeSchema.statics.findByWilaya = function(wilayaId) {
+  return this.find({ wilayaId });
 };
 
 const Office = mongoose.model('Office', officeSchema);

@@ -7,57 +7,63 @@ const { asyncHandler } = require('../middlewares/error.middleware');
 const User = require('../models/user.model');
 const Property = require('../models/property.model');
 const Office = require('../models/office.model');
+const Wilaya = require('../models/wilaya.model');
+const Reservation = require('../models/reservation.model');
 const { body, validationResult } = require('express-validator');
+
+// Import route modules
+const wilayaRoutes = require('./wilaya.routes');
+const officeRoutes = require('./office.routes');
+const propertyRoutes = require('./property.routes');
+const reservationRoutes = require('./reservation.routes');
+
+// Mount route modules
+router.use('/wilayas', wilayaRoutes);
+router.use('/offices', officeRoutes);
+router.use('/properties', propertyRoutes);
+router.use('/reservations', reservationRoutes);
 
 // Validation rules for user creation
 const createUserValidation = [
-  body('username')
-    .notEmpty().withMessage('Username is required')
-    .isLength({ min: 3, max: 30 }).withMessage('Username must be between 3 and 30 characters')
-    .matches(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
+  body('name')
+    .notEmpty().withMessage('Name is required')
+    .isLength({ max: 100 }).withMessage('Name cannot exceed 100 characters')
+    .trim(),
+  body('email')
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email address')
+    .normalizeEmail(),
   body('password')
     .notEmpty().withMessage('Password is required')
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  body('role')
+    .notEmpty().withMessage('Role is required')
+    .isIn(['admin', 'employer']).withMessage('Role must be either admin or employer'),
+  body('officeId')
+    .optional()
+    .isMongoId().withMessage('Invalid Office ID')
+];
+
+// Validation rules for user update
+const updateUserValidation = [
+  body('name')
+    .optional()
+    .isLength({ max: 100 }).withMessage('Name cannot exceed 100 characters')
+    .trim(),
   body('email')
     .optional()
     .isEmail().withMessage('Please provide a valid email address')
     .normalizeEmail(),
-  body('firstName')
+  body('password')
     .optional()
-    .isLength({ max: 50 }).withMessage('First name cannot exceed 50 characters')
-    .trim(),
-  body('lastName')
-    .optional()
-    .isLength({ max: 50 }).withMessage('Last name cannot exceed 50 characters')
-    .trim(),
-  body('phone')
-    .optional()
-    .isLength({ max: 20 }).withMessage('Phone number cannot exceed 20 characters')
-    .trim(),
+    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
   body('role')
     .optional()
-    .isIn(['admin', 'sous admin', 'employee', 'customer']).withMessage('Invalid role'),
-  body('isActive')
+    .isIn(['admin', 'employer']).withMessage('Role must be either admin or employer'),
+  body('officeId')
     .optional()
-    .isBoolean().withMessage('isActive must be a boolean')
+    .isMongoId().withMessage('Invalid Office ID')
 ];
-
-router.get('/test', 
-  auth, 
-  adminOnly, 
-  asyncHandler(async (req, res) => {
-    sendSuccess(res, 'Admin access granted', {
-      user: {
-        id: req.user._id,
-        name: req.user.fullName,
-        email: req.user.email,
-        role: req.user.role
-      },
-      message: 'You have admin privileges',
-      timestamp: new Date().toISOString()
-    });
-  })
-);
 
 // GET /api/admin/users - Get all users with pagination and filtering
 router.get('/users',
@@ -650,50 +656,44 @@ router.get('/stats',
   asyncHandler(async (req, res) => {
     const User = require('../models/user.model');
     const Property = require('../models/property.model');
-    const Booking = require('../models/booking.model');
+    const Reservation = require('../models/reservation.model');
     const Office = require('../models/office.model');
 
     const [
       totalUsers,
       totalProperties,
-      totalBookings,
+      totalReservations,
       totalOffices,
-      activeBookings,
+      activeReservations,
       availableProperties
     ] = await Promise.all([
       User.countDocuments(),
       Property.countDocuments(),
-      Booking.countDocuments(),
+      Reservation.countDocuments(),
       Office.countDocuments(),
-      Booking.countDocuments({ status: { $in: ['pending', 'confirmed'] } }),
-      Property.countDocuments({ status: 'available' })
+      Reservation.countDocuments({ status: { $in: ['pending', 'approved'] } }),
+      Property.countDocuments({ available: true })
     ]);
 
     sendSuccess(res, 'Admin statistics retrieved successfully', {
       users: {
         total: totalUsers,
-        customers: await User.countDocuments({ role: 'customer' }),
-        employees: await User.countDocuments({ role: 'employee' }),
+        employers: await User.countDocuments({ role: 'employer' }),
         admins: await User.countDocuments({ role: 'admin' })
       },
       properties: {
         total: totalProperties,
-        available: availableProperties,
-        apartments: await Property.countDocuments({ type: 'apartment' }),
-        villas: await Property.countDocuments({ type: 'villa' }),
-        shops: await Property.countDocuments({ type: 'shop' })
+        available: availableProperties
       },
-      bookings: {
-        total: totalBookings,
-        active: activeBookings,
-        pending: await Booking.countDocuments({ status: 'pending' }),
-        confirmed: await Booking.countDocuments({ status: 'confirmed' }),
-        completed: await Booking.countDocuments({ status: 'completed' }),
-        cancelled: await Booking.countDocuments({ status: 'cancelled' })
+      reservations: {
+        total: totalReservations,
+        active: activeReservations,
+        pending: await Reservation.countDocuments({ status: 'pending' }),
+        approved: await Reservation.countDocuments({ status: 'approved' }),
+        cancelled: await Reservation.countDocuments({ status: 'cancelled' })
       },
       offices: {
-        total: totalOffices,
-        active: await Office.countDocuments({ isActive: true })
+        total: totalOffices
       }
     });
   })

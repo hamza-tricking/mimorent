@@ -2,30 +2,15 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
-  username: {
+  name: {
     type: String,
-    required: [true, 'Username is required'],
-    unique: true,
+    required: [true, 'Name is required'],
     trim: true,
-    minlength: [3, 'Username must be at least 3 characters long'],
-    maxlength: [30, 'Username cannot exceed 30 characters'],
-    match: [
-      /^[a-zA-Z0-9_]+$/,
-      'Username can only contain letters, numbers, and underscores'
-    ]
-  },
-  firstName: {
-    type: String,
-    trim: true,
-    maxlength: [50, 'First name cannot exceed 50 characters']
-  },
-  lastName: {
-    type: String,
-    trim: true,
-    maxlength: [50, 'Last name cannot exceed 50 characters']
+    maxlength: [100, 'Name cannot exceed 100 characters']
   },
   email: {
     type: String,
+    required: [true, 'Email is required'],
     unique: true,
     lowercase: true,
     trim: true,
@@ -40,38 +25,26 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Password must be at least 6 characters long'],
     select: false
   },
-  phone: {
-    type: String,
-    trim: true,
-    maxlength: [20, 'Phone number cannot exceed 20 characters']
-  },
   role: {
     type: String,
     enum: {
-      values: ['admin', 'sous admin', 'employee', 'customer'],
-      message: 'Role must be either admin, sous admin, employee, or customer'
+      values: ['admin', 'employer'],
+      message: 'Role must be either admin or employer'
     },
-    default: 'customer'
+    required: [true, 'Role is required']
   },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  avatar: {
-    type: String,
-    trim: true
-  },
-  dateOfBirth: {
-    type: Date
-  },
-  address: {
-    street: { type: String, trim: true },
-    city: { type: String, trim: true },
-    wilaya: { type: String, trim: true },
-    zipCode: { type: String, trim: true }
-  },
-  lastLogin: {
-    type: Date
+  officeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Office',
+    required: function() {
+      return this.role === 'employer';
+    },
+    validate: {
+      validator: function() {
+        return this.role !== 'employer' || this.officeId;
+      },
+      message: 'Office ID is required for employers'
+    }
   }
 }, {
   timestamps: true,
@@ -82,13 +55,8 @@ const userSchema = new mongoose.Schema({
 // Indexes for better query performance
 userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
-userSchema.index({ isActive: 1 });
+userSchema.index({ officeId: 1 });
 userSchema.index({ createdAt: -1 });
-
-// Virtual for full name
-userSchema.virtual('fullName').get(function() {
-  return `${this.firstName} ${this.lastName}`;
-});
 
 // Pre-save middleware to hash password
 userSchema.pre('save', async function(next) {
@@ -113,14 +81,9 @@ userSchema.methods.isAdmin = function() {
   return this.role === 'admin';
 };
 
-// Instance method to check if user is employee or admin
-userSchema.methods.isEmployee = function() {
-  return this.role === 'employee' || this.role === 'admin';
-};
-
-// Static method to find active users
-userSchema.statics.findActive = function(filters = {}) {
-  return this.find({ ...filters, isActive: true });
+// Instance method to check if user is employer
+userSchema.methods.isEmployer = function() {
+  return this.role === 'employer';
 };
 
 const User = mongoose.model('User', userSchema);

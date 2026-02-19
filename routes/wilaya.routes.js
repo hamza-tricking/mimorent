@@ -17,7 +17,13 @@ const createWilayaValidation = [
     .trim(),
   body('image')
     .optional()
-    .isURL().withMessage('Image must be a valid URL')
+    .custom((value) => {
+      if (!value) return true;
+      // Accept both URLs and base64 data URLs
+      const urlRegex = /^https?:\/\/.+/;
+      const base64Regex = /^data:image\/[a-z]+;base64,/;
+      return urlRegex.test(value) || base64Regex.test(value);
+    }).withMessage('Image must be a valid URL or base64 data')
     .trim()
 ];
 
@@ -29,7 +35,13 @@ const updateWilayaValidation = [
     .trim(),
   body('image')
     .optional()
-    .isURL().withMessage('Image must be a valid URL')
+    .custom((value) => {
+      if (!value) return true;
+      // Accept both URLs and base64 data URLs
+      const urlRegex = /^https?:\/\/.+/;
+      const base64Regex = /^data:image\/[a-z]+;base64,/;
+      return urlRegex.test(value) || base64Regex.test(value);
+    }).withMessage('Image must be a valid URL or base64 data')
     .trim()
 ];
 
@@ -131,28 +143,40 @@ router.put('/:id',
   updateWilayaValidation,
   asyncHandler(async (req, res) => {
     try {
+      console.log('PUT /api/admin/wilayas/:id - Request received');
+      console.log('Request params:', req.params);
+      console.log('Request body:', req.body);
+      
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.log('Validation errors:', errors.array());
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
       const { name, image } = req.body;
       const wilayaId = req.params.id;
+      
+      console.log('Extracted data:', { name, image, wilayaId });
 
       // Check if wilaya exists
       const wilaya = await Wilaya.findById(wilayaId);
       if (!wilaya) {
+        console.log('Wilaya not found with ID:', wilayaId);
         return sendError(res, 'Wilaya not found', 404);
       }
+      
+      console.log('Found wilaya:', wilaya);
 
       // Check if another wilaya with same name exists
       if (name && name !== wilaya.name) {
+        console.log('Checking for duplicate name:', name);
         const existingWilaya = await Wilaya.findOne({
           _id: { $ne: wilayaId },
           name
         });
 
         if (existingWilaya) {
+          console.log('Duplicate wilaya found:', existingWilaya);
           return sendError(res, 'Wilaya with this name already exists', 409);
         }
       }
@@ -160,11 +184,15 @@ router.put('/:id',
       // Update wilaya
       if (name) wilaya.name = name;
       if (image) wilaya.image = image;
+      
+      console.log('Updated wilaya data:', wilaya);
 
       await wilaya.save();
+      console.log('Wilaya saved successfully');
 
       sendSuccess(res, 'Wilaya updated successfully', { wilaya });
     } catch (error) {
+      console.error('Error updating wilaya:', error);
       sendError(res, 'Failed to update wilaya', error);
     }
   })

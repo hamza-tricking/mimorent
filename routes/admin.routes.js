@@ -148,7 +148,7 @@ router.post('/users',
   adminOnly,
   asyncHandler(async (req, res) => {
     try {
-      const { username, password, email, firstName, lastName, phone, role, isActive } = req.body;
+      const { username, password, email, firstName, lastName, phone, role, isActive, officeId, image } = req.body;
 
       // Simple validation
       if (!username || !password) {
@@ -184,6 +184,8 @@ router.post('/users',
         phone,
         role,
         password,
+        officeId,
+        image,
         isActive: isActive !== undefined ? isActive : true
       });
 

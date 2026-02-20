@@ -12,19 +12,16 @@ const userSchema = new mongoose.Schema({
   },
   name: {
     type: String,
-    required: [true, 'Name is required'],
     trim: true,
     maxlength: [100, 'Name cannot exceed 100 characters']
   },
   firstName: {
     type: String,
-    required: [true, 'First name is required'],
     trim: true,
     maxlength: [50, 'First name cannot exceed 50 characters']
   },
   lastName: {
     type: String,
-    required: [true, 'Last name is required'],
     trim: true,
     maxlength: [50, 'Last name cannot exceed 50 characters']
   },
@@ -66,6 +63,10 @@ const userSchema = new mongoose.Schema({
       },
       message: 'Office ID is required for employers'
     }
+  },
+  image: {
+    type: String,
+    trim: true
   },
   isActive: {
     type: Boolean,

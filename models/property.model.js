@@ -33,6 +33,11 @@ const propertySchema = new mongoose.Schema({
     ref: 'Wilaya',
     required: [true, 'Wilaya reference is required']
   },
+  officeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Office',
+    required: [true, 'Office reference is required']
+  },
   available: {
     type: Boolean,
     default: true
@@ -46,6 +51,7 @@ const propertySchema = new mongoose.Schema({
 // Indexes for better query performance
 propertySchema.index({ title: 'text', description: 'text' });
 propertySchema.index({ wilayaId: 1 });
+propertySchema.index({ officeId: 1 });
 propertySchema.index({ pricePerDay: 1 });
 propertySchema.index({ available: 1 });
 
@@ -57,6 +63,11 @@ propertySchema.statics.findAvailable = function(filters = {}) {
 // Static method to find properties by wilaya
 propertySchema.statics.findByWilaya = function(wilayaId) {
   return this.find({ wilayaId });
+};
+
+// Static method to find properties by office
+propertySchema.statics.findByOffice = function(officeId) {
+  return this.find({ officeId });
 };
 
 // Instance method to check property availability

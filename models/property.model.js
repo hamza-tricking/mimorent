@@ -23,7 +23,36 @@ const propertySchema = new mongoose.Schema({
     trim: true,
     validate: {
       validator: function(value) {
-        return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(value) || /^\/uploads\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(value);
+        // Allow local file paths
+        if (/^\/uploads\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(value)) {
+          return true;
+        }
+        
+        // Allow URLs with image extensions (with or without query parameters)
+        const urlWithExtension = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(value);
+        if (urlWithExtension) {
+          return true;
+        }
+        
+        // Allow common image hosting domains (Google Images, iStock, etc.)
+        const imageHostingDomains = [
+          'encrypted-tbn0.gstatic.com',
+          'encrypted-tbn1.gstatic.com', 
+          'encrypted-tbn2.gstatic.com',
+          'encrypted-tbn3.gstatic.com',
+          'i.imgur.com',
+          'i.ibb.co',
+          'images.unsplash.com',
+          'cdn.pixabay.com',
+          'images.pexels.com'
+        ];
+        
+        try {
+          const url = new URL(value);
+          return imageHostingDomains.some(domain => url.hostname.includes(domain));
+        } catch {
+          return false;
+        }
       },
       message: 'Image must be a valid URL or file path with supported image extension'
     }

@@ -121,7 +121,10 @@ router.post('/',
       await property.save();
 
       // Populate wilaya and office info for response
-      await property.populate(['wilayaId', 'officeId'], 'name code');
+      await property.populate([
+        { path: 'wilayaId', select: 'name code' },
+        { path: 'officeId', select: 'name code' }
+      ]);
 
       sendSuccess(res, 'Property created successfully', { property }, 201);
     } catch (error) {
@@ -163,7 +166,10 @@ router.get('/',
       }
 
       const properties = await Property.find(filter)
-        .populate(['wilayaId', 'officeId'], 'name code')
+        .populate([
+          { path: 'wilayaId', select: 'name code' },
+          { path: 'officeId', select: 'name code' }
+        ])
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -193,7 +199,10 @@ router.get('/:id',
   asyncHandler(async (req, res) => {
     try {
       const property = await Property.findById(req.params.id)
-        .populate(['wilayaId', 'officeId'], 'name code');
+        .populate([
+          { path: 'wilayaId', select: 'name code' },
+          { path: 'officeId', select: 'name code' }
+        ]);
       
       if (!property) {
         return sendError(res, 'Property not found', 404);
@@ -263,7 +272,10 @@ router.put('/:id',
       await property.save();
 
       // Populate wilaya and office info for response
-      await property.populate(['wilayaId', 'officeId'], 'name code');
+      await property.populate([
+        { path: 'wilayaId', select: 'name code' },
+        { path: 'officeId', select: 'name code' }
+      ]);
 
       sendSuccess(res, 'Property updated successfully', { property });
     } catch (error) {

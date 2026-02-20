@@ -6,6 +6,7 @@ const { sendSuccess, sendError } = require('../utils/response.util');
 const { asyncHandler } = require('../middlewares/error.middleware');
 const Property = require('../models/property.model');
 const Wilaya = require('../models/wilaya.model');
+const Office = require('../models/office.model');
 const { body, validationResult } = require('express-validator');
 
 // Validation rules for property creation
@@ -25,6 +26,9 @@ const createPropertyValidation = [
   body('wilayaId')
     .notEmpty().withMessage('Wilaya ID is required')
     .isMongoId().withMessage('Invalid Wilaya ID'),
+  body('officeId')
+    .notEmpty().withMessage('Office ID is required')
+    .isMongoId().withMessage('Invalid Office ID'),
   body('images')
     .optional()
     .isArray().withMessage('Images must be an array'),
@@ -62,6 +66,9 @@ const updatePropertyValidation = [
   body('wilayaId')
     .optional()
     .isMongoId().withMessage('Invalid Wilaya ID'),
+  body('officeId')
+    .optional()
+    .isMongoId().withMessage('Invalid Office ID'),
   body('images')
     .optional()
     .isArray().withMessage('Images must be an array'),
@@ -82,7 +89,7 @@ router.post('/',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, pricePerDay, wilayaId, images, available } = req.body;
+      const { title, description, pricePerDay, wilayaId, officeId, images, available } = req.body;
 
       // Check if wilaya exists
       const wilaya = await Wilaya.findById(wilayaId);
@@ -90,19 +97,31 @@ router.post('/',
         return sendError(res, 'Wilaya not found', 404);
       }
 
+      // Check if office exists
+      const office = await Office.findById(officeId);
+      if (!office) {
+        return sendError(res, 'Office not found', 404);
+      }
+
+      // Check if office belongs to the specified wilaya
+      if (office.wilayaId.toString() !== wilayaId) {
+        return sendError(res, 'Office does not belong to the specified wilaya', 400);
+      }
+
       const property = new Property({ 
         title, 
         description, 
         pricePerDay, 
         wilayaId, 
+        officeId,
         images: images || [],
         available: available !== undefined ? available : true
       });
       
       await property.save();
 
-      // Populate wilaya info for response
-      await property.populate('wilayaId', 'name code');
+      // Populate wilaya and office info for response
+      await property.populate(['wilayaId', 'officeId'], 'name code');
 
       sendSuccess(res, 'Property created successfully', { property }, 201);
     } catch (error) {
@@ -140,7 +159,7 @@ router.get('/',
       }
 
       const properties = await Property.find(filter)
-        .populate('wilayaId', 'name code')
+        .populate(['wilayaId', 'officeId'], 'name code')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -169,7 +188,7 @@ router.get('/:id',
   asyncHandler(async (req, res) => {
     try {
       const property = await Property.findById(req.params.id)
-        .populate('wilayaId', 'name code');
+        .populate(['wilayaId', 'officeId'], 'name code');
       
       if (!property) {
         return sendError(res, 'Property not found', 404);
@@ -194,7 +213,7 @@ router.put('/:id',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, pricePerDay, wilayaId, images, available } = req.body;
+      const { title, description, pricePerDay, wilayaId, officeId, images, available } = req.body;
       const propertyId = req.params.id;
 
       // Check if property exists
@@ -212,6 +231,22 @@ router.put('/:id',
         property.wilayaId = wilayaId;
       }
 
+      // Check if office exists (if provided)
+      if (officeId) {
+        const office = await Office.findById(officeId);
+        if (!office) {
+          return sendError(res, 'Office not found', 404);
+        }
+        
+        // Check if office belongs to the specified wilaya
+        const targetWilayaId = wilayaId || property.wilayaId;
+        if (office.wilayaId.toString() !== targetWilayaId.toString()) {
+          return sendError(res, 'Office does not belong to the specified wilaya', 400);
+        }
+        
+        property.officeId = officeId;
+      }
+
       // Update property
       if (title) property.title = title;
       if (description) property.description = description;
@@ -221,8 +256,8 @@ router.put('/:id',
 
       await property.save();
 
-      // Populate wilaya info for response
-      await property.populate('wilayaId', 'name code');
+      // Populate wilaya and office info for response
+      await property.populate(['wilayaId', 'officeId'], 'name code');
 
       sendSuccess(res, 'Property updated successfully', { property });
     } catch (error) {

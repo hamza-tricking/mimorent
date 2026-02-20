@@ -28,6 +28,11 @@ const propertySchema = new mongoose.Schema({
           return true;
         }
         
+        // Allow base64 data URLs
+        if (/^data:image\/(jpeg|jpg|png|gif|webp);base64,/.test(value)) {
+          return true;
+        }
+        
         // Allow URLs with image extensions (with or without query parameters)
         const urlWithExtension = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(value);
         if (urlWithExtension) {
@@ -54,7 +59,7 @@ const propertySchema = new mongoose.Schema({
           return false;
         }
       },
-      message: 'Image must be a valid URL or file path with supported image extension'
+      message: 'Image must be a valid URL, base64 data URL, or file path with supported image extension'
     }
   }],
   wilayaId: {

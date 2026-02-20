@@ -125,7 +125,11 @@ router.post('/',
 
       sendSuccess(res, 'Property created successfully', { property }, 201);
     } catch (error) {
-      sendError(res, 'Failed to create property', error);
+      console.error('Property creation error:', error);
+      if (error.name === 'ValidationError') {
+        return sendError(res, 'Validation failed', 400, error.message);
+      }
+      sendError(res, 'Failed to create property', 500, error.message);
     }
   })
 );
@@ -176,7 +180,8 @@ router.get('/',
         }
       });
     } catch (error) {
-      sendError(res, 'Failed to retrieve properties', error);
+      console.error('Get properties error:', error);
+      sendError(res, 'Failed to retrieve properties', 500, error.message);
     }
   })
 );
@@ -196,7 +201,8 @@ router.get('/:id',
 
       sendSuccess(res, 'Property retrieved successfully', { property });
     } catch (error) {
-      sendError(res, 'Failed to retrieve property', error);
+      console.error('Get property error:', error);
+      sendError(res, 'Failed to retrieve property', 500, error.message);
     }
   })
 );
@@ -261,7 +267,11 @@ router.put('/:id',
 
       sendSuccess(res, 'Property updated successfully', { property });
     } catch (error) {
-      sendError(res, 'Failed to update property', error);
+      console.error('Property update error:', error);
+      if (error.name === 'ValidationError') {
+        return sendError(res, 'Validation failed', 400, error.message);
+      }
+      sendError(res, 'Failed to update property', 500, error.message);
     }
   })
 );
@@ -284,7 +294,8 @@ router.delete('/:id',
 
       sendSuccess(res, 'Property deleted successfully', { property });
     } catch (error) {
-      sendError(res, 'Failed to delete property', error);
+      console.error('Delete property error:', error);
+      sendError(res, 'Failed to delete property', 500, error.message);
     }
   })
 );
@@ -331,7 +342,8 @@ router.get('/wilaya/:wilayaId',
         }
       });
     } catch (error) {
-      sendError(res, 'Failed to retrieve properties', error);
+      console.error('Get properties by wilaya error:', error);
+      sendError(res, 'Failed to retrieve properties', 500, error.message);
     }
   })
 );

@@ -20,8 +20,7 @@ const reservationSchema = new mongoose.Schema({
   customerPhone: {
     type: String,
     required: [true, 'Customer phone is required'],
-    trim: true,
-    maxlength: [20, 'Customer phone cannot exceed 20 characters']
+    trim: true
   },
   startDate: {
     type: Date,
@@ -36,13 +35,33 @@ const reservationSchema = new mongoose.Schema({
     required: [true, 'Total price is required'],
     min: [0, 'Total price cannot be negative']
   },
+  paidAmount: {
+    type: Number,
+    required: [true, 'Paid amount is required'],
+    min: [0, 'Paid amount cannot be negative'],
+    default: 0
+  },
+  remainingAmount: {
+    type: Number,
+    required: [true, 'Remaining amount is required'],
+    min: [0, 'Remaining amount cannot be negative'],
+    default: 0
+  },
+  paymentStatus: {
+    type: String,
+    required: [true, 'Payment status is required'],
+    enum: ['pending', 'partial', 'paid'],
+    default: 'pending'
+  },
   status: {
     type: String,
-    enum: {
-      values: ['pending', 'approved', 'cancelled'],
-      message: 'Status must be either pending, approved, or cancelled'
-    },
+    required: [true, 'Reservation status is required'],
+    enum: ['pending', 'confirmed', 'cancelled', 'completed'],
     default: 'pending'
+  },
+  notificationSent: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true,
@@ -63,12 +82,43 @@ reservationSchema.virtual('durationDays').get(function() {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 });
 
-// Pre-save middleware to validate dates
+// Pre-save middleware to validate dates and calculate amounts
 reservationSchema.pre('save', function(next) {
   if (this.startDate >= this.endDate) {
     return next(new Error('End date must be after start date'));
   }
+  
+  // Calculate remaining amount if not provided
+  if (this.isModified('paidAmount') || this.isModified('totalPrice')) {
+    this.remainingAmount = this.totalPrice - this.paidAmount;
+    
+    // Update payment status based on amounts
+    if (this.remainingAmount <= 0) {
+      this.paymentStatus = 'paid';
+    } else if (this.paidAmount > 0) {
+      this.paymentStatus = 'partial';
+    } else {
+      this.paymentStatus = 'pending';
+    }
+  }
+  
   next();
+});
+
+// Post-save middleware to trigger notifications
+reservationSchema.post('save', function(doc) {
+  // Check if reservation is ending soon (within 1 day) and notification not sent
+  const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const isEndingSoon = doc.endDate <= oneDayFromNow && doc.endDate > new Date();
+  
+  if (isEndingSoon && !doc.notificationSent && doc.status === 'confirmed') {
+    // Trigger notification (you can implement this with a notification service)
+    console.log('Reservation ending soon notification triggered for:', doc._id);
+    
+    // Mark notification as sent (in a real implementation, this would be handled by a notification service)
+    doc.notificationSent = true;
+    doc.save().catch(err => console.error('Error updating notification status:', err));
+  }
 });
 
 // Static method to find active reservations

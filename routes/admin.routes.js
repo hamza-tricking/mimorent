@@ -124,7 +124,7 @@ router.get('/users/:id',
   adminOnly,
   asyncHandler(async (req, res) => {
     try {
-      const user = await User.findById(req.params.id).select('-password').populate('office', 'name');
+      const user = await User.findById(req.params.id).select('-password').populate('officeId', 'name');
       
       if (!user) {
         return sendError(res, 'User not found', 404);
@@ -227,7 +227,7 @@ router.put('/users/:id',
         userId,
         updates,
         { new: true, runValidators: true }
-      ).select('-password').populate('office', 'name');
+      ).select('-password').populate('officeId', 'name');
 
       if (!user) {
         return sendError(res, 'User not found', 404);

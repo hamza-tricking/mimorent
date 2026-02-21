@@ -58,7 +58,7 @@ router.post('/login',
       return sendBadRequest(res, 'Please provide username and password');
     }
 
-    const user = await User.findOne({ username }).select('+password');
+    const user = await User.findOne({ username }).populate('officeId').select('+password');
 
     if (!user || !(await user.comparePassword(password))) {
       return sendUnauthorized(res, 'Invalid username or password');
@@ -73,17 +73,27 @@ router.post('/login',
 
     const token = generateToken(user._id);
 
+    // Prepare user data with office and wilaya information
+    const userData = {
+      id: user._id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      fullName: user.fullName,
+      lastLogin: user.lastLogin
+    };
+
+    // Add office and wilaya data for employers
+    if (user.role === 'employer' && user.officeId) {
+      userData.officeId = user.officeId._id;
+      userData.officeName = user.officeId.name;
+      userData.wilayaId = user.officeId.wilayaId;
+    }
+
     sendSuccess(res, 'Login successful', {
-      user: {
-        id: user._id,
-        username: user.username,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        fullName: user.fullName,
-        lastLogin: user.lastLogin
-      },
+      user: userData,
       token
     });
   })

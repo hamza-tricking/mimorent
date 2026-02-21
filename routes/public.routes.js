@@ -25,16 +25,17 @@ router.get('/properties',
         properties.map(async (property) => {
           const propertyObj = property.toObject();
           
-          if (property.isReserved) {
-            // Get the most recent active reservation for this property
-            const activeReservation = await Reservation.findOne({
-              propertyId: property._id,
-              status: { $in: ['pending', 'confirmed'] }
-            }).sort({ endDate: -1 }).select('endDate');
-            
-            if (activeReservation) {
-              propertyObj.reservationEndDate = activeReservation.endDate;
-            }
+          // Check if property has active reservations (don't rely on isReserved field)
+          const activeReservation = await Reservation.findOne({
+            propertyId: property._id,
+            status: { $in: ['pending', 'confirmed', 'approved'] }
+          }).sort({ endDate: -1 }).select('endDate');
+          
+          if (activeReservation) {
+            propertyObj.isReserved = true;
+            propertyObj.reservationEndDate = activeReservation.endDate;
+          } else {
+            propertyObj.isReserved = false;
           }
           
           return propertyObj;

@@ -7,6 +7,12 @@ const propertySchema = new mongoose.Schema({
     trim: true,
     maxlength: [200, 'Title cannot exceed 200 characters']
   },
+  location: {
+    type: String,
+    required: [true, 'Property location is required'],
+    trim: true,
+    maxlength: [500, 'Location cannot exceed 500 characters']
+  },
   description: {
     type: String,
     required: [true, 'Description is required'],
@@ -87,12 +93,13 @@ const propertySchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-propertySchema.index({ title: 'text', description: 'text' });
+propertySchema.index({ title: 'text', description: 'text', location: 'text' });
 propertySchema.index({ wilayaId: 1 });
 propertySchema.index({ officeId: 1 });
 propertySchema.index({ pricePerDay: 1 });
 propertySchema.index({ isReserved: 1 });
 propertySchema.index({ available: 1 });
+propertySchema.index({ location: 'text' });
 
 // Static method to find available properties
 propertySchema.statics.findAvailable = function(filters = {}) {

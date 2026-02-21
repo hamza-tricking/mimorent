@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const auth = require('../middlewares/auth.middleware');
 const { adminOnly } = require('../middlewares/role.middleware');
 const { sendSuccess, sendError } = require('../utils/response.util');
@@ -410,6 +411,18 @@ router.put('/properties/:id',
 
       console.log(`Current state: available=${property.available}, isReserved=${property.isReserved}`);
 
+      // Check for active reservations that might be affecting this
+      const Reservation = require('../models/reservation.model');
+      const activeReservations = await Reservation.find({
+        propertyId: propertyId,
+        status: { $in: ['pending', 'confirmed', 'approved'] }
+      });
+      
+      console.log(`Active reservations found: ${activeReservations.length}`);
+      if (activeReservations.length > 0) {
+        console.log(`Active reservations:`, activeReservations.map(r => ({ id: r._id, status: r.status })));
+      }
+
       // Use updateOne to bypass any middleware or hooks
       const updateData = {};
       if (available !== undefined) updateData.available = available;
@@ -433,16 +446,39 @@ router.put('/properties/:id',
       // If isReserved is still true, force it with another update
       if (isReserved === false && updatedProperty.isReserved === true) {
         console.log(`Forcing isReserved to false with direct update...`);
-        await Property.updateOne(
+        
+        // First, let's try to update it directly in MongoDB
+        const forceResult = await Property.updateOne(
           { _id: propertyId },
           { $set: { isReserved: false } },
-          { runValidators: false }
+          { runValidators: false, bypassDocumentValidation: true }
         );
+        
+        console.log(`Force update result:`, forceResult);
         
         // Fetch again
         const finalProperty = await Property.findById(propertyId);
         console.log(`After force update: available=${finalProperty.available}, isReserved=${finalProperty.isReserved}`);
-        sendSuccess(res, 'Property updated successfully', { property: finalProperty });
+        
+        // If still true, there might be a database trigger or something else
+        if (finalProperty.isReserved === true) {
+          console.log(`WARNING: isReserved is still true after direct update! There might be a database trigger or middleware.`);
+          
+          // Try one more approach - using raw MongoDB collection
+          const db = mongoose.connection.db;
+          const rawResult = await db.collection('properties').updateOne(
+            { _id: new mongoose.Types.ObjectId(propertyId) },
+            { $set: { isReserved: false } }
+          );
+          console.log(`Raw MongoDB update result:`, rawResult);
+          
+          const rawProperty = await Property.findById(propertyId);
+          console.log(`After raw update: available=${rawProperty.available}, isReserved=${rawProperty.isReserved}`);
+          
+          sendSuccess(res, 'Property updated successfully', { property: rawProperty });
+        } else {
+          sendSuccess(res, 'Property updated successfully', { property: finalProperty });
+        }
       } else {
         sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
       }

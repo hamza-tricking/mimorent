@@ -11,18 +11,16 @@ router.get('/properties',
     try {
       console.log('Public properties API called');
 
-      // Get all properties first without any filtering
-      const allProperties = await Property.find({})
+      // Get available properties (available: true, regardless of isReserved)
+      const properties = await Property.find({ available: true })
         .populate('wilayaId', 'name')
         .populate('officeId', 'name')
         .sort({ createdAt: -1 });
 
-      console.log('Total properties found:', allProperties.length);
-      console.log('Sample property:', allProperties[0]);
+      console.log('Available properties found:', properties.length);
 
-      // For now, return all properties to debug
       sendSuccess(res, 'Properties retrieved successfully', {
-        properties: allProperties
+        properties
       });
     } catch (error) {
       console.error('Get public properties error:', error);

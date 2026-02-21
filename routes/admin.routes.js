@@ -398,11 +398,23 @@ router.put('/properties/:id',
       const propertyId = req.params.id;
       const { available, isReserved, ...otherUpdates } = req.body;
 
+      console.log('Update request received:', {
+        propertyId,
+        available,
+        isReserved,
+        otherUpdates
+      });
+
       // Check if property exists
       const property = await Property.findById(propertyId);
       if (!property) {
         return sendError(res, 'Property not found', 404);
       }
+
+      console.log('Current property state:', {
+        available: property.available,
+        isReserved: property.isReserved
+      });
 
       // Prepare update object
       const updateData = {};
@@ -424,17 +436,24 @@ router.put('/properties/:id',
         Object.assign(updateData, otherUpdates);
       }
 
+      console.log('Update data prepared:', updateData);
+
       // Perform single update operation
       if (Object.keys(updateData).length > 0) {
-        await Property.updateOne(
+        const updateResult = await Property.updateOne(
           { _id: propertyId },
           updateData,
           { runValidators: false }
         );
+        console.log('Update result:', updateResult);
       }
 
       // Get the updated property
       const updatedProperty = await Property.findById(propertyId);
+      console.log('Updated property state:', {
+        available: updatedProperty.available,
+        isReserved: updatedProperty.isReserved
+      });
 
       sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
     } catch (error) {

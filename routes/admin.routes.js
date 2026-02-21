@@ -398,14 +398,25 @@ router.put('/properties/:id',
       const propertyId = req.params.id;
       const { available, isReserved, ...otherUpdates } = req.body;
 
+      console.log('=== DEBUG ADMIN PROPERTY UPDATE ===');
+      console.log('PropertyId:', propertyId);
+      console.log('Request body:', req.body);
+      console.log('Available:', available);
+      console.log('IsReserved:', isReserved);
+      console.log('OtherUpdates:', otherUpdates);
+
       // Check if property exists
       const property = await Property.findById(propertyId);
       if (!property) {
+        console.log('Property not found');
         return sendError(res, 'Property not found', 404);
       }
 
+      console.log('Property found:', property._id);
+
       // Update status fields without triggering full validation
       if (available !== undefined) {
+        console.log('Updating available to:', available);
         await Property.updateOne(
           { _id: propertyId },
           { available: available },
@@ -414,6 +425,7 @@ router.put('/properties/:id',
       }
       
       if (isReserved !== undefined) {
+        console.log('Updating isReserved to:', isReserved);
         await Property.updateOne(
           { _id: propertyId },
           { isReserved: isReserved },
@@ -423,6 +435,7 @@ router.put('/properties/:id',
 
       // Update other fields with validation if needed
       if (Object.keys(otherUpdates).length > 0) {
+        console.log('Updating other fields:', otherUpdates);
         // Remove sensitive fields
         delete otherUpdates._id;
         delete otherUpdates.createdAt;
@@ -437,6 +450,8 @@ router.put('/properties/:id',
 
       // Get the updated property
       const updatedProperty = await Property.findById(propertyId);
+      console.log('Updated property:', updatedProperty);
+      console.log('=== END DEBUG ===');
 
       sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
     } catch (error) {

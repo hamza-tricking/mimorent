@@ -390,6 +390,75 @@ router.post('/properties',
   })
 );
 
+// Test endpoint to debug property update
+router.get('/properties/:id/debug',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const propertyId = req.params.id;
+      
+      // Get current property
+      const property = await Property.findById(propertyId);
+      if (!property) {
+        return sendError(res, 'Property not found', 404);
+      }
+
+      // Check for active reservations
+      const Reservation = require('../models/reservation.model');
+      const activeReservations = await Reservation.find({
+        propertyId: propertyId,
+        status: { $in: ['pending', 'confirmed', 'approved'] }
+      });
+
+      // Try direct update
+      const updateResult = await Property.updateOne(
+        { _id: propertyId },
+        { $set: { isReserved: false } }
+      );
+
+      // Get property after update
+      const updatedProperty = await Property.findById(propertyId);
+
+      // Try raw MongoDB update
+      const db = mongoose.connection.db;
+      const rawResult = await db.collection('properties').updateOne(
+        { _id: new mongoose.Types.ObjectId(propertyId) },
+        { $set: { isReserved: false, testField: 'test' } }
+      );
+
+      // Get property after raw update
+      const rawProperty = await Property.findById(propertyId);
+
+      sendSuccess(res, 'Debug info retrieved', {
+        originalProperty: {
+          id: property._id,
+          available: property.available,
+          isReserved: property.isReserved
+        },
+        activeReservationsCount: activeReservations.length,
+        activeReservations: activeReservations.map(r => ({ id: r._id, status: r.status })),
+        updateResult: updateResult,
+        updatedProperty: {
+          id: updatedProperty._id,
+          available: updatedProperty.available,
+          isReserved: updatedProperty.isReserved
+        },
+        rawUpdateResult: rawResult,
+        rawProperty: {
+          id: rawProperty._id,
+          available: rawProperty.available,
+          isReserved: rawProperty.isReserved,
+          testField: rawProperty.testField
+        }
+      });
+    } catch (error) {
+      console.error('Debug endpoint error:', error);
+      sendError(res, 'Debug endpoint failed', 500, error.message);
+    }
+  })
+);
+
 // PUT /api/admin/properties/:id - Update property
 router.put('/properties/:id',
   auth,

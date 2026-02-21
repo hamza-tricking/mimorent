@@ -44,13 +44,27 @@ router.put('/properties/:id',
         return sendError(res, 'Property not found', 404);
       }
 
-      // Update property
-      if (available !== undefined) property.available = available;
-      if (isReserved !== undefined) property.isReserved = isReserved;
+      // Update only the status fields without triggering full validation
+      if (available !== undefined) {
+        await Property.updateOne(
+          { _id: propertyId },
+          { available: available },
+          { runValidators: false }
+        );
+      }
+      
+      if (isReserved !== undefined) {
+        await Property.updateOne(
+          { _id: propertyId },
+          { isReserved: isReserved },
+          { runValidators: false }
+        );
+      }
 
-      await property.save();
+      // Get the updated property
+      const updatedProperty = await Property.findById(propertyId);
 
-      sendSuccess(res, 'Property updated successfully', { property });
+      sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
     } catch (error) {
       console.error('Update property error:', error);
       sendError(res, 'Failed to update property', 500, error.message);

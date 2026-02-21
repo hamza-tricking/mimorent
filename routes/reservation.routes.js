@@ -14,9 +14,6 @@ const createReservationValidation = [
   body('propertyId')
     .notEmpty().withMessage('Property ID is required')
     .isMongoId().withMessage('Invalid Property ID'),
-  body('employerId')
-    .notEmpty().withMessage('Employer ID is required')
-    .isMongoId().withMessage('Invalid Employer ID'),
   body('customerName')
     .notEmpty().withMessage('Customer name is required')
     .isLength({ max: 100 }).withMessage('Customer name cannot exceed 100 characters')
@@ -35,9 +32,16 @@ const createReservationValidation = [
     .notEmpty().withMessage('Total price is required')
     .isNumeric().withMessage('Total price must be a number')
     .isFloat({ min: 0 }).withMessage('Total price cannot be negative'),
+  body('paidAmount')
+    .notEmpty().withMessage('Paid amount is required')
+    .isNumeric().withMessage('Paid amount must be a number')
+    .isFloat({ min: 0 }).withMessage('Paid amount cannot be negative'),
+  body('paymentStatus')
+    .optional()
+    .isIn(['pending', 'partial', 'paid']).withMessage('Invalid payment status'),
   body('status')
     .optional()
-    .isIn(['pending', 'approved', 'cancelled']).withMessage('Invalid status')
+    .isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid status')
 ];
 
 // Validation rules for reservation update
@@ -60,15 +64,22 @@ const updateReservationValidation = [
     .optional()
     .isNumeric().withMessage('Total price must be a number')
     .isFloat({ min: 0 }).withMessage('Total price cannot be negative'),
+  body('paidAmount')
+    .optional()
+    .isNumeric().withMessage('Paid amount must be a number')
+    .isFloat({ min: 0 }).withMessage('Paid amount cannot be negative'),
+  body('paymentStatus')
+    .optional()
+    .isIn(['pending', 'partial', 'paid']).withMessage('Invalid payment status'),
   body('status')
     .optional()
-    .isIn(['pending', 'approved', 'cancelled']).withMessage('Invalid status')
+    .isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid status')
 ];
 
 // POST /api/admin/reservations - Create new reservation
 router.post('/',
   auth,
-  employerOnly,
+  adminOnly,
   createReservationValidation,
   asyncHandler(async (req, res) => {
     try {
@@ -77,7 +88,18 @@ router.post('/',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { propertyId, customerName, customerPhone, startDate, endDate, totalPrice, status, employerId } = req.body;
+      const { 
+        propertyId, 
+        customerName, 
+        customerPhone, 
+        startDate, 
+        endDate, 
+        totalPrice, 
+        paidAmount,
+        remainingAmount,
+        paymentStatus,
+        status 
+      } = req.body;
 
       // Check if property exists and is available
       const property = await Property.findById(propertyId);
@@ -89,6 +111,9 @@ router.post('/',
         return sendError(res, 'Property is not available for reservation', 400);
       }
 
+      // Get employerId from authenticated user
+      const employerId = req.user.id;
+
       // Create reservation
       const reservation = new Reservation({
         propertyId,
@@ -98,6 +123,9 @@ router.post('/',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         totalPrice,
+        paidAmount,
+        remainingAmount,
+        paymentStatus: paymentStatus || 'pending',
         status: status || 'pending'
       });
 
@@ -105,7 +133,11 @@ router.post('/',
 
       sendSuccess(res, 'Reservation created successfully', { reservation }, 201);
     } catch (error) {
-      sendError(res, 'Failed to create reservation', error);
+      console.error('Reservation creation error:', error);
+      if (error.name === 'ValidationError') {
+        return sendError(res, 'Validation failed', 400, error.message);
+      }
+      sendError(res, 'Failed to create reservation', 500, error.message);
     }
   })
 );
@@ -131,7 +163,10 @@ router.get('/',
       }
 
       const reservations = await Reservation.find(filter)
-        .populate('propertyId', 'title description pricePerDay wilayaId')
+        .populate([
+          { path: 'propertyId', select: 'title description pricePerDay' },
+          { path: 'employerId', select: 'username firstName lastName' }
+        ])
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -148,7 +183,8 @@ router.get('/',
         }
       });
     } catch (error) {
-      sendError(res, 'Failed to retrieve reservations', error);
+      console.error('Get reservations error:', error);
+      sendError(res, 'Failed to retrieve reservations', 500, error.message);
     }
   })
 );
@@ -185,7 +221,17 @@ router.put('/:id',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { customerName, customerPhone, startDate, endDate, totalPrice, status } = req.body;
+      const { 
+        customerName, 
+        customerPhone, 
+        startDate, 
+        endDate, 
+        totalPrice, 
+        paidAmount,
+        remainingAmount,
+        paymentStatus,
+        status 
+      } = req.body;
       const reservationId = req.params.id;
 
       // Check if reservation exists
@@ -200,13 +246,20 @@ router.put('/:id',
       if (startDate) reservation.startDate = new Date(startDate);
       if (endDate) reservation.endDate = new Date(endDate);
       if (totalPrice) reservation.totalPrice = totalPrice;
+      if (paidAmount !== undefined) reservation.paidAmount = paidAmount;
+      if (remainingAmount !== undefined) reservation.remainingAmount = remainingAmount;
+      if (paymentStatus) reservation.paymentStatus = paymentStatus;
       if (status) reservation.status = status;
 
       await reservation.save();
 
       sendSuccess(res, 'Reservation updated successfully', { reservation });
     } catch (error) {
-      sendError(res, 'Failed to update reservation', error);
+      console.error('Reservation update error:', error);
+      if (error.name === 'ValidationError') {
+        return sendError(res, 'Validation failed', 400, error.message);
+      }
+      sendError(res, 'Failed to update reservation', 500, error.message);
     }
   })
 );
@@ -229,7 +282,8 @@ router.delete('/:id',
 
       sendSuccess(res, 'Reservation deleted successfully', { reservation });
     } catch (error) {
-      sendError(res, 'Failed to delete reservation', error);
+      console.error('Reservation delete error:', error);
+      sendError(res, 'Failed to delete reservation', 500, error.message);
     }
   })
 );

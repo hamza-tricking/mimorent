@@ -398,26 +398,22 @@ router.put('/properties/:id',
       const propertyId = req.params.id;
       const { available, isReserved, ...otherUpdates } = req.body;
 
-      // Force output with different methods
-      process.stdout.write('PROPERTY UPDATE START\n');
-      console.log('ID:', propertyId);
-      console.log('BODY:', JSON.stringify(req.body));
-      process.stderr.write('PROPERTY UPDATE - STDERR LOG\n');
-
       // Check if property exists
       const property = await Property.findById(propertyId);
       if (!property) {
         return sendError(res, 'Property not found', 404);
       }
 
-      console.log('BEFORE:', JSON.stringify({ available: property.available, isReserved: property.isReserved }));
+      // Log current state
+      console.log(`BEFORE UPDATE - Property ${propertyId}: available=${property.available}, isReserved=${property.isReserved}`);
+      console.log(`REQUEST BODY:`, req.body);
 
       // Direct update using findByIdAndUpdate for better reliability
       const updateData = {};
       if (available !== undefined) updateData.available = available;
       if (isReserved !== undefined) updateData.isReserved = isReserved;
 
-      console.log('UPDATING WITH:', JSON.stringify(updateData));
+      console.log(`UPDATE DATA:`, updateData);
 
       const updatedProperty = await Property.findByIdAndUpdate(
         propertyId,
@@ -425,8 +421,11 @@ router.put('/properties/:id',
         { new: true, runValidators: false }
       );
 
-      console.log('AFTER:', JSON.stringify({ available: updatedProperty.available, isReserved: updatedProperty.isReserved }));
-      process.stdout.write('PROPERTY UPDATE END\n');
+      console.log(`AFTER UPDATE - Property ${propertyId}: available=${updatedProperty.available}, isReserved=${updatedProperty.isReserved}`);
+
+      // Verify the update actually happened by querying again
+      const verification = await Property.findById(propertyId);
+      console.log(`VERIFICATION - Property ${propertyId}: available=${verification.available}, isReserved=${verification.isReserved}`);
 
       sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
     } catch (error) {

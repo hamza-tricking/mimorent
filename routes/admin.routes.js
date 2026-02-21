@@ -398,12 +398,9 @@ router.put('/properties/:id',
       const propertyId = req.params.id;
       const { available, isReserved, ...otherUpdates } = req.body;
 
-      console.log('Update request received:', {
-        propertyId,
-        available,
-        isReserved,
-        otherUpdates
-      });
+      console.log('=== PROPERTY UPDATE DEBUG ===');
+      console.log('propertyId:', propertyId);
+      console.log('req.body:', req.body);
 
       // Check if property exists
       const property = await Property.findById(propertyId);
@@ -411,49 +408,31 @@ router.put('/properties/:id',
         return sendError(res, 'Property not found', 404);
       }
 
-      console.log('Current property state:', {
+      console.log('Current property:', {
+        _id: property._id,
         available: property.available,
         isReserved: property.isReserved
       });
 
-      // Prepare update object
+      // Direct update using findByIdAndUpdate for better reliability
       const updateData = {};
-      
-      // Update status fields
-      if (available !== undefined) {
-        updateData.available = available;
-      }
-      
-      if (isReserved !== undefined) {
-        updateData.isReserved = isReserved;
-      }
+      if (available !== undefined) updateData.available = available;
+      if (isReserved !== undefined) updateData.isReserved = isReserved;
 
-      // Add other fields (excluding sensitive ones)
-      if (Object.keys(otherUpdates).length > 0) {
-        delete otherUpdates._id;
-        delete otherUpdates.createdAt;
-        delete otherUpdates.updatedAt;
-        Object.assign(updateData, otherUpdates);
-      }
+      console.log('Update data:', updateData);
 
-      console.log('Update data prepared:', updateData);
+      const updatedProperty = await Property.findByIdAndUpdate(
+        propertyId,
+        updateData,
+        { new: true, runValidators: false }
+      );
 
-      // Perform single update operation
-      if (Object.keys(updateData).length > 0) {
-        const updateResult = await Property.updateOne(
-          { _id: propertyId },
-          updateData,
-          { runValidators: false }
-        );
-        console.log('Update result:', updateResult);
-      }
-
-      // Get the updated property
-      const updatedProperty = await Property.findById(propertyId);
-      console.log('Updated property state:', {
+      console.log('Updated property:', {
+        _id: updatedProperty._id,
         available: updatedProperty.available,
         isReserved: updatedProperty.isReserved
       });
+      console.log('=== END DEBUG ===');
 
       sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
     } catch (error) {

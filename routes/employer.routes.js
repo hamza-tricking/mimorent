@@ -37,10 +37,23 @@ router.get('/reservations/employer/:employerId',
     try {
       const { employerId } = req.params;
       
+      console.log('=== BACKEND DEBUG ===');
+      console.log('Fetching ALL reservations for employer:', employerId);
+      
       // Get all reservations (employers can see all reservations regardless of who created them)
       const reservations = await Reservation.find({})
         .populate('propertyId', 'title description pricePerDay')
         .sort({ createdAt: -1 });
+      
+      console.log('Total reservations found:', reservations.length);
+      console.log('Reservations:', reservations.map(r => ({
+        reservationId: r._id,
+        customerName: r.customerName,
+        propertyTitle: r.propertyId?.title,
+        paidAmount: r.paidAmount,
+        remainingAmount: r.remainingAmount
+      })));
+      console.log('=== END BACKEND DEBUG ===');
 
       sendSuccess(res, 'Reservations retrieved successfully', { reservations });
     } catch (error) {

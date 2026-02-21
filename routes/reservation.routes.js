@@ -36,6 +36,10 @@ const createReservationValidation = [
     .notEmpty().withMessage('Paid amount is required')
     .isNumeric().withMessage('Paid amount must be a number')
     .isFloat({ min: 0 }).withMessage('Paid amount cannot be negative'),
+  body('remainingAmount')
+    .notEmpty().withMessage('Remaining amount is required')
+    .isNumeric().withMessage('Remaining amount must be a number')
+    .isFloat({ min: 0 }).withMessage('Remaining amount cannot be negative'),
   body('paymentStatus')
     .optional()
     .isIn(['pending', 'partial', 'paid']).withMessage('Invalid payment status'),
@@ -68,6 +72,10 @@ const updateReservationValidation = [
     .optional()
     .isNumeric().withMessage('Paid amount must be a number')
     .isFloat({ min: 0 }).withMessage('Paid amount cannot be negative'),
+  body('remainingAmount')
+    .optional()
+    .isNumeric().withMessage('Remaining amount must be a number')
+    .isFloat({ min: 0 }).withMessage('Remaining amount cannot be negative'),
   body('paymentStatus')
     .optional()
     .isIn(['pending', 'partial', 'paid']).withMessage('Invalid payment status'),

@@ -29,6 +29,35 @@ router.get('/wilaya/:wilayaId',
   })
 );
 
+// PUT /api/properties/:id - Update property status (for employers)
+router.put('/:id',
+  auth,
+  employerOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const propertyId = req.params.id;
+      const { available, isReserved } = req.body;
+
+      // Check if property exists
+      const property = await Property.findById(propertyId);
+      if (!property) {
+        return sendError(res, 'Property not found', 404);
+      }
+
+      // Update property
+      if (available !== undefined) property.available = available;
+      if (isReserved !== undefined) property.isReserved = isReserved;
+
+      await property.save();
+
+      sendSuccess(res, 'Property updated successfully', { property });
+    } catch (error) {
+      console.error('Update property error:', error);
+      sendError(res, 'Failed to update property', 500, error.message);
+    }
+  })
+);
+
 // GET /api/reservations/employer/:employerId - Get reservations by employer
 router.get('/reservations/employer/:employerId',
   auth,

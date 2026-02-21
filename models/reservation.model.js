@@ -9,7 +9,7 @@ const reservationSchema = new mongoose.Schema({
   employerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Employer reference is required']
+    required: false
   },
   customerName: {
     type: String,

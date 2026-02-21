@@ -37,40 +37,15 @@ router.get('/reservations/employer/:employerId',
     try {
       const { employerId } = req.params;
       
-      console.log('=== DEBUG EMPLOYER RESERVATIONS ===');
-      console.log('Request employerId:', employerId);
-      
       // Get employer's office ID
       const employer = await User.findById(employerId);
       if (!employer) {
         return sendError(res, 'Employer not found', 404);
       }
       
-      console.log('Employer found:', {
-        employerId: employer._id,
-        employerName: employer.firstName + ' ' + employer.lastName,
-        officeId: employer.officeId
-      });
-      
       // Get all properties in the employer's office
       const officeProperties = await Property.find({ officeId: employer.officeId }).select('_id');
       const propertyIds = officeProperties.map(p => p._id);
-      
-      console.log('Office properties:', propertyIds);
-      
-      // Get ALL reservations first for debugging
-      const allReservations = await Reservation.find({})
-        .populate('propertyId', 'title description pricePerDay')
-        .sort({ createdAt: -1 });
-      
-      console.log('All reservations in database:', allReservations.map(r => ({
-        reservationId: r._id,
-        employerId: r.employerId,
-        propertyId: r.propertyId,
-        customerName: r.customerName,
-        paidAmount: r.paidAmount,
-        remainingAmount: r.remainingAmount
-      })));
       
       // Get reservations for this employer AND reservations for properties in their office
       const reservations = await Reservation.find({
@@ -81,17 +56,6 @@ router.get('/reservations/employer/:employerId',
       })
         .populate('propertyId', 'title description pricePerDay')
         .sort({ createdAt: -1 });
-
-      console.log('Filtered reservations for employer:', reservations.length);
-      console.log('Filtered reservations:', reservations.map(r => ({
-        reservationId: r._id,
-        employerId: r.employerId,
-        propertyId: r.propertyId,
-        customerName: r.customerName,
-        paidAmount: r.paidAmount,
-        remainingAmount: r.remainingAmount
-      })));
-      console.log('=== END DEBUG ===');
 
       sendSuccess(res, 'Reservations retrieved successfully', { reservations });
     } catch (error) {

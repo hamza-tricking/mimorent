@@ -37,23 +37,8 @@ router.get('/reservations/employer/:employerId',
     try {
       const { employerId } = req.params;
       
-      // Get employer's office ID
-      const employer = await User.findById(employerId);
-      if (!employer) {
-        return sendError(res, 'Employer not found', 404);
-      }
-      
-      // Get all properties in the employer's office
-      const officeProperties = await Property.find({ officeId: employer.officeId }).select('_id');
-      const propertyIds = officeProperties.map(p => p._id);
-      
-      // Get reservations for this employer AND reservations for properties in their office
-      const reservations = await Reservation.find({
-        $or: [
-          { employerId: employerId },
-          { propertyId: { $in: propertyIds } }
-        ]
-      })
+      // Get all reservations (employers can see all reservations regardless of who created them)
+      const reservations = await Reservation.find({})
         .populate('propertyId', 'title description pricePerDay')
         .sort({ createdAt: -1 });
 

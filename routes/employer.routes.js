@@ -8,8 +8,8 @@ const Property = require('../models/property.model');
 const Reservation = require('../models/reservation.model');
 const User = require('../models/user.model');
 
-// GET /api/properties/wilaya/:wilayaId - Get properties by wilaya
-router.get('/wilaya/:wilayaId',
+// GET /api/employer/properties/wilaya/:wilayaId - Get properties by wilaya
+router.get('/properties/wilaya/:wilayaId',
   auth,
   employerOnly,
   asyncHandler(async (req, res) => {
@@ -29,8 +29,8 @@ router.get('/wilaya/:wilayaId',
   })
 );
 
-// PUT /api/properties/:id - Update property status (for employers)
-router.put('/:id',
+// PUT /api/employer/properties/:id - Update property status (for employers)
+router.put('/properties/:id',
   auth,
   employerOnly,
   asyncHandler(async (req, res) => {

@@ -398,9 +398,9 @@ router.put('/properties/:id',
       const propertyId = req.params.id;
       const { available, isReserved, ...otherUpdates } = req.body;
 
-      console.log('=== PROPERTY UPDATE DEBUG ===');
-      console.log('propertyId:', propertyId);
-      console.log('req.body:', req.body);
+      // Simple logging that should appear
+      console.log('PROPERTY UPDATE - ID:', propertyId);
+      console.log('PROPERTY UPDATE - BODY:', req.body);
 
       // Check if property exists
       const property = await Property.findById(propertyId);
@@ -408,18 +408,14 @@ router.put('/properties/:id',
         return sendError(res, 'Property not found', 404);
       }
 
-      console.log('Current property:', {
-        _id: property._id,
-        available: property.available,
-        isReserved: property.isReserved
-      });
+      console.log('PROPERTY UPDATE - BEFORE:', { available: property.available, isReserved: property.isReserved });
 
       // Direct update using findByIdAndUpdate for better reliability
       const updateData = {};
       if (available !== undefined) updateData.available = available;
       if (isReserved !== undefined) updateData.isReserved = isReserved;
 
-      console.log('Update data:', updateData);
+      console.log('PROPERTY UPDATE - UPDATING WITH:', updateData);
 
       const updatedProperty = await Property.findByIdAndUpdate(
         propertyId,
@@ -427,12 +423,7 @@ router.put('/properties/:id',
         { new: true, runValidators: false }
       );
 
-      console.log('Updated property:', {
-        _id: updatedProperty._id,
-        available: updatedProperty.available,
-        isReserved: updatedProperty.isReserved
-      });
-      console.log('=== END DEBUG ===');
+      console.log('PROPERTY UPDATE - AFTER:', { available: updatedProperty.available, isReserved: updatedProperty.isReserved });
 
       sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
     } catch (error) {

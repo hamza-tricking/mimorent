@@ -98,7 +98,8 @@ router.post('/',
         paidAmount,
         remainingAmount,
         paymentStatus,
-        status 
+        status,
+        employerId 
       } = req.body;
 
       // Check if property exists and is available
@@ -111,13 +112,13 @@ router.post('/',
         return sendError(res, 'Property is not available for reservation', 400);
       }
 
-      // Get employerId from authenticated user
-      const employerId = req.user.id;
+      // For admin reservations, use provided employerId or leave it null
+      let reservationEmployerId = employerId || null;
 
       // Create reservation
       const reservation = new Reservation({
         propertyId,
-        employerId,
+        employerId: reservationEmployerId,
         customerName,
         customerPhone,
         startDate: new Date(startDate),

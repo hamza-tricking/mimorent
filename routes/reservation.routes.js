@@ -7,6 +7,7 @@ const { asyncHandler } = require('../middlewares/error.middleware');
 const Reservation = require('../models/reservation.model');
 const Property = require('../models/property.model');
 const User = require('../models/user.model');
+const History = require('../models/history.model');
 const { body, validationResult } = require('express-validator');
 
 // Validation rules for reservation creation
@@ -140,6 +141,38 @@ router.post('/',
 
       await reservation.save();
 
+      // Log history entry for reservation creation
+      try {
+        await History.createReservationHistory({
+          action: 'reservation_created',
+          reservationId: reservation._id,
+          userId: req.user._id,
+          description: `تم إنشاء حجز جديد للعميل ${customerName} للعقار ${property.title}`,
+          metadata: {
+            customerName,
+            customerPhone,
+            startDate,
+            endDate,
+            totalPrice,
+            paidAmount,
+            remainingAmount,
+            paymentStatus: reservation.paymentStatus,
+            status: reservation.status,
+            propertyTitle: property.title,
+            propertyId: property._id,
+            propertyPricePerDay: property.pricePerDay,
+            employerId: reservationEmployerId,
+            createdAt: reservation.createdAt,
+            reservationId: reservation._id
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (historyError) {
+        console.error('Failed to create history entry:', historyError);
+        // Don't fail the request if history logging fails
+      }
+
       sendSuccess(res, 'Reservation created successfully', { reservation }, 201);
     } catch (error) {
       console.error('Reservation creation error:', error);
@@ -262,6 +295,50 @@ router.put('/:id',
 
       await reservation.save();
 
+      // Log history entry for reservation update
+      try {
+        const updatedProperty = await Property.findById(reservation.propertyId);
+        await History.createReservationHistory({
+          action: 'reservation_updated',
+          reservationId: reservation._id,
+          userId: req.user._id,
+          description: `تم تحديث حجز العميل ${reservation.customerName}`,
+          metadata: {
+            customerName: reservation.customerName,
+            customerPhone: reservation.customerPhone,
+            startDate: reservation.startDate,
+            endDate: reservation.endDate,
+            totalPrice: reservation.totalPrice,
+            paidAmount: reservation.paidAmount,
+            remainingAmount: reservation.remainingAmount,
+            paymentStatus: reservation.paymentStatus,
+            status: reservation.status,
+            propertyTitle: updatedProperty?.title || 'Unknown',
+            propertyId: reservation.propertyId,
+            propertyPricePerDay: updatedProperty?.pricePerDay,
+            employerId: reservation.employerId,
+            changes: {
+              customerName: customerName !== undefined,
+              customerPhone: customerPhone !== undefined,
+              startDate: startDate !== undefined,
+              endDate: endDate !== undefined,
+              totalPrice: totalPrice !== undefined,
+              paidAmount: paidAmount !== undefined,
+              remainingAmount: remainingAmount !== undefined,
+              paymentStatus: paymentStatus !== undefined,
+              status: status !== undefined
+            },
+            updatedAt: reservation.updatedAt,
+            reservationId: reservation._id
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (historyError) {
+        console.error('Failed to create history entry:', historyError);
+        // Don't fail the request if history logging fails
+      }
+
       sendSuccess(res, 'Reservation updated successfully', { reservation });
     } catch (error) {
       console.error('Reservation update error:', error);
@@ -287,9 +364,45 @@ router.delete('/:id',
         return sendError(res, 'Reservation not found', 404);
       }
 
+      const reservationData = { ...reservation.toObject() };
+
       await Reservation.findByIdAndDelete(reservationId);
 
-      sendSuccess(res, 'Reservation deleted successfully', { reservation });
+      // Log history entry for reservation deletion
+      try {
+        const deletedProperty = await Property.findById(reservationData.propertyId);
+        await History.createReservationHistory({
+          action: 'reservation_cancelled',
+          reservationId: reservationData._id,
+          userId: req.user._id,
+          description: `تم إلغاء حجز العميل ${reservationData.customerName}`,
+          metadata: {
+            customerName: reservationData.customerName,
+            customerPhone: reservationData.customerPhone,
+            startDate: reservationData.startDate,
+            endDate: reservationData.endDate,
+            totalPrice: reservationData.totalPrice,
+            paidAmount: reservationData.paidAmount,
+            remainingAmount: reservationData.remainingAmount,
+            paymentStatus: reservationData.paymentStatus,
+            status: reservationData.status,
+            propertyTitle: deletedProperty?.title || 'Unknown',
+            propertyId: reservationData.propertyId,
+            propertyPricePerDay: deletedProperty?.pricePerDay,
+            employerId: reservationData.employerId,
+            deletedAt: new Date(),
+            originalCreatedAt: reservationData.createdAt,
+            reservationId: reservationData._id
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (historyError) {
+        console.error('Failed to create history entry:', historyError);
+        // Don't fail the request if history logging fails
+      }
+
+      sendSuccess(res, 'Reservation deleted successfully', { reservation: reservationData });
     } catch (error) {
       console.error('Reservation delete error:', error);
       sendError(res, 'Failed to delete reservation', 500, error.message);

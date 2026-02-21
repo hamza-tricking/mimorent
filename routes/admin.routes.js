@@ -10,6 +10,7 @@ const Property = require('../models/property.model');
 const Office = require('../models/office.model');
 const Wilaya = require('../models/wilaya.model');
 const Reservation = require('../models/reservation.model');
+const History = require('../models/history.model');
 const { body, validationResult } = require('express-validator');
 
 // Import route modules
@@ -752,6 +753,93 @@ router.get('/stats',
         total: totalOffices
       }
     });
+  })
+);
+
+// GET /api/admin/history - Get history with pagination and filtering
+router.get('/history',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const action = req.query.action || '';
+      const entityType = req.query.entityType || '';
+      const userId = req.query.userId || '';
+      const startDate = req.query.startDate;
+      const endDate = req.query.endDate;
+
+      // Build filter object
+      const filter = {};
+      
+      if (action) {
+        filter.action = action;
+      }
+      
+      if (entityType) {
+        filter.entityType = entityType;
+      }
+      
+      if (userId) {
+        filter.userId = userId;
+      }
+      
+      if (startDate || endDate) {
+        filter.createdAt = {};
+        if (startDate) {
+          filter.createdAt.$gte = new Date(startDate);
+        }
+        if (endDate) {
+          filter.createdAt.$lte = new Date(endDate);
+        }
+      }
+
+      const skip = (page - 1) * limit;
+
+      const history = await History.find(filter)
+        .populate('userId', 'username firstName lastName email')
+        .populate('entityId')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      const total = await History.countDocuments(filter);
+
+      sendSuccess(res, 'History retrieved successfully', {
+        history,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      });
+    } catch (error) {
+      sendError(res, 'Failed to retrieve history', error);
+    }
+  })
+);
+
+// GET /api/admin/history/reservations - Get reservation-specific history
+router.get('/history/reservations',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const action = req.query.action || '';
+
+      const result = await History.getReservationHistory(
+        action ? { action } : {},
+        { page, limit }
+      );
+
+      sendSuccess(res, 'Reservation history retrieved successfully', result);
+    } catch (error) {
+      sendError(res, 'Failed to retrieve reservation history', error);
+    }
   })
 );
 

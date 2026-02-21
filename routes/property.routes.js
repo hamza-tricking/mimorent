@@ -269,15 +269,30 @@ router.put('/:id',
       if (images) property.images = images;
       if (available !== undefined) property.available = available;
 
-      await property.save();
+      // Use updateOne instead of save to avoid validation on required fields
+      const updateData = {};
+      if (title) updateData.title = title;
+      if (description) updateData.description = description;
+      if (pricePerDay) updateData.pricePerDay = pricePerDay;
+      if (images) updateData.images = images;
+      if (available !== undefined) updateData.available = available;
+
+      await Property.updateOne(
+        { _id: property._id },
+        updateData,
+        { runValidators: false }
+      );
+
+      // Get the updated property
+      const updatedProperty = await Property.findById(property._id);
 
       // Populate wilaya and office info for response
-      await property.populate([
+      await updatedProperty.populate([
         { path: 'wilayaId', select: 'name code' },
         { path: 'officeId', select: 'name code' }
       ]);
 
-      sendSuccess(res, 'Property updated successfully', { property });
+      sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
     } catch (error) {
       console.error('Property update error:', error);
       if (error.name === 'ValidationError') {

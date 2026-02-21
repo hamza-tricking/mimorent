@@ -122,4 +122,64 @@ router.post('/reservations',
   })
 );
 
+// PUT /api/reservations/:id - Update reservation (for employers)
+router.put('/reservations/:id',
+  auth,
+  employerOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const { 
+        customerName, 
+        customerPhone, 
+        startDate, 
+        endDate, 
+        totalPrice, 
+        paidAmount,
+        remainingAmount,
+        paymentStatus,
+        status 
+      } = req.body;
+      const reservationId = req.params.id;
+      const employerId = req.user.id;
+
+      // Check if reservation exists
+      const reservation = await Reservation.findById(reservationId);
+      if (!reservation) {
+        return sendError(res, 'Reservation not found', 404);
+      }
+
+      // Check if this reservation belongs to the employer or their office
+      const employer = await User.findById(employerId);
+      const officeProperties = await Property.find({ officeId: employer.officeId }).select('_id');
+      const propertyIds = officeProperties.map(p => p._id);
+
+      if (reservation.employerId.toString() !== employerId && 
+          !propertyIds.some(id => id.toString() === reservation.propertyId.toString())) {
+        return sendError(res, 'Access denied', 403);
+      }
+
+      // Update reservation
+      if (customerName) reservation.customerName = customerName;
+      if (customerPhone) reservation.customerPhone = customerPhone;
+      if (startDate) reservation.startDate = new Date(startDate);
+      if (endDate) reservation.endDate = new Date(endDate);
+      if (totalPrice) reservation.totalPrice = totalPrice;
+      if (paidAmount !== undefined) reservation.paidAmount = paidAmount;
+      if (remainingAmount !== undefined) reservation.remainingAmount = remainingAmount;
+      if (paymentStatus) reservation.paymentStatus = paymentStatus;
+      if (status) reservation.status = status;
+
+      await reservation.save();
+
+      sendSuccess(res, 'Reservation updated successfully', { reservation });
+    } catch (error) {
+      console.error('Reservation update error:', error);
+      if (error.name === 'ValidationError') {
+        return sendError(res, 'Validation failed', 400, error.message);
+      }
+      sendError(res, 'Failed to update reservation', 500, error.message);
+    }
+  })
+);
+
 module.exports = router;

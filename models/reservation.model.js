@@ -84,7 +84,11 @@ reservationSchema.virtual('durationDays').get(function() {
 
 // Pre-save middleware to validate dates and calculate amounts
 reservationSchema.pre('save', function(next) {
-  if (this.startDate >= this.endDate) {
+  // Convert dates to Date objects if they are strings
+  const startDate = this.startDate instanceof Date ? this.startDate : new Date(this.startDate);
+  const endDate = this.endDate instanceof Date ? this.endDate : new Date(this.endDate);
+  
+  if (startDate >= endDate) {
     return next(new Error('End date must be after start date'));
   }
   

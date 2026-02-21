@@ -138,7 +138,6 @@ router.put('/reservations/:id',
         status 
       } = req.body;
       const reservationId = req.params.id;
-      const employerId = req.user.id;
 
       // Check if reservation exists
       const reservation = await Reservation.findById(reservationId);
@@ -146,17 +145,7 @@ router.put('/reservations/:id',
         return sendError(res, 'Reservation not found', 404);
       }
 
-      // Check if this reservation belongs to the employer or their office
-      const employer = await User.findById(employerId);
-      const officeProperties = await Property.find({ officeId: employer.officeId }).select('_id');
-      const propertyIds = officeProperties.map(p => p._id);
-
-      if (reservation.employerId.toString() !== employerId && 
-          !propertyIds.some(id => id.toString() === reservation.propertyId.toString())) {
-        return sendError(res, 'Access denied', 403);
-      }
-
-      // Update reservation
+      // Update reservation (employers can edit any reservation)
       if (customerName) reservation.customerName = customerName;
       if (customerPhone) reservation.customerPhone = customerPhone;
       if (startDate) reservation.startDate = new Date(startDate);

@@ -228,13 +228,25 @@ router.put('/:id',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, pricePerDay, wilayaId, officeId, images, available } = req.body;
+      const { title, description, pricePerDay, wilayaId, officeId, images, available, isReserved } = req.body;
       const propertyId = req.params.id;
 
       // Check if property exists
       const property = await Property.findById(propertyId);
       if (!property) {
         return sendError(res, 'Property not found', 404);
+      }
+
+      // If making property available (isReserved: false), cancel all active reservations
+      if (isReserved === false) {
+        const Reservation = require('../models/reservation.model');
+        await Reservation.updateMany(
+          { 
+            propertyId: propertyId,
+            status: { $in: ['pending', 'confirmed', 'approved'] }
+          },
+          { status: 'cancelled' }
+        );
       }
 
       // Check if wilaya exists (if provided)
@@ -263,19 +275,13 @@ router.put('/:id',
       }
 
       // Update property
-      if (title) property.title = title;
-      if (description) property.description = description;
-      if (pricePerDay) property.pricePerDay = pricePerDay;
-      if (images) property.images = images;
-      if (available !== undefined) property.available = available;
-
-      // Use updateOne instead of save to avoid validation on required fields
       const updateData = {};
       if (title) updateData.title = title;
       if (description) updateData.description = description;
       if (pricePerDay) updateData.pricePerDay = pricePerDay;
       if (images) updateData.images = images;
       if (available !== undefined) updateData.available = available;
+      if (isReserved !== undefined) updateData.isReserved = isReserved;
 
       await Property.updateOne(
         { _id: property._id },

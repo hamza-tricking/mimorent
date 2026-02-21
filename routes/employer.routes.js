@@ -38,23 +38,10 @@ router.get('/properties/wilaya/:wilayaId',
     try {
       const { wilayaId } = req.params;
       
-      console.log('=== DEBUG PROPERTIES BY WILAYA ===');
-      console.log('WilayaId:', wilayaId);
-      
       const properties = await Property.find({ wilayaId })
         .populate('officeId', 'name')
         .populate('wilayaId', 'name')
         .sort({ createdAt: -1 });
-
-      console.log('Properties found:', properties.length);
-      console.log('Properties:', properties.map(p => ({
-        _id: p._id,
-        title: p.title,
-        available: p.available,
-        isReserved: p.isReserved,
-        wilayaId: p.wilayaId
-      })));
-      console.log('=== END DEBUG ===');
 
       sendSuccess(res, 'Properties retrieved successfully', { properties });
     } catch (error) {
@@ -107,7 +94,7 @@ router.put('/properties/:id',
   })
 );
 
-// GET /api/reservations/employer/:employerId - Get reservations by employer
+// GET /api/employer/reservations/employer/:employerId - Get reservations by employer
 router.get('/reservations/employer/:employerId',
   auth,
   employerOnly,
@@ -115,23 +102,10 @@ router.get('/reservations/employer/:employerId',
     try {
       const { employerId } = req.params;
       
-      console.log('=== BACKEND DEBUG ===');
-      console.log('Fetching ALL reservations for employer:', employerId);
-      
       // Get all reservations (employers can see all reservations regardless of who created them)
       const reservations = await Reservation.find({})
         .populate('propertyId', 'title description pricePerDay')
         .sort({ createdAt: -1 });
-      
-      console.log('Total reservations found:', reservations.length);
-      console.log('Reservations:', reservations.map(r => ({
-        reservationId: r._id,
-        customerName: r.customerName,
-        propertyTitle: r.propertyId?.title,
-        paidAmount: r.paidAmount,
-        remainingAmount: r.remainingAmount
-      })));
-      console.log('=== END BACKEND DEBUG ===');
 
       sendSuccess(res, 'Reservations retrieved successfully', { reservations });
     } catch (error) {

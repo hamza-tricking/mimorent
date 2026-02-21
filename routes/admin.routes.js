@@ -398,60 +398,43 @@ router.put('/properties/:id',
       const propertyId = req.params.id;
       const { available, isReserved, ...otherUpdates } = req.body;
 
-      console.log('=== DEBUG ADMIN PROPERTY UPDATE ===');
-      console.log('PropertyId:', propertyId);
-      console.log('Request body:', req.body);
-      console.log('Available:', available);
-      console.log('IsReserved:', isReserved);
-      console.log('OtherUpdates:', otherUpdates);
-
       // Check if property exists
       const property = await Property.findById(propertyId);
       if (!property) {
-        console.log('Property not found');
         return sendError(res, 'Property not found', 404);
       }
 
-      console.log('Property found:', property._id);
-
-      // Update status fields without triggering full validation
+      // Prepare update object
+      const updateData = {};
+      
+      // Update status fields
       if (available !== undefined) {
-        console.log('Updating available to:', available);
-        await Property.updateOne(
-          { _id: propertyId },
-          { available: available },
-          { runValidators: false }
-        );
+        updateData.available = available;
       }
       
       if (isReserved !== undefined) {
-        console.log('Updating isReserved to:', isReserved);
-        await Property.updateOne(
-          { _id: propertyId },
-          { isReserved: isReserved },
-          { runValidators: false }
-        );
+        updateData.isReserved = isReserved;
       }
 
-      // Update other fields with validation if needed
+      // Add other fields (excluding sensitive ones)
       if (Object.keys(otherUpdates).length > 0) {
-        console.log('Updating other fields:', otherUpdates);
-        // Remove sensitive fields
         delete otherUpdates._id;
         delete otherUpdates.createdAt;
         delete otherUpdates.updatedAt;
-        
+        Object.assign(updateData, otherUpdates);
+      }
+
+      // Perform single update operation
+      if (Object.keys(updateData).length > 0) {
         await Property.updateOne(
           { _id: propertyId },
-          otherUpdates,
+          updateData,
           { runValidators: false }
         );
       }
 
       // Get the updated property
       const updatedProperty = await Property.findById(propertyId);
-      console.log('Updated property:', updatedProperty);
-      console.log('=== END DEBUG ===');
 
       sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
     } catch (error) {
@@ -474,15 +457,28 @@ router.patch('/properties/:id/toggle-status',
         return sendError(res, 'Property not found', 404);
       }
 
-      // Toggle between 'available' and 'unavailable'
-      property.status = property.status === 'available' ? 'unavailable' : 'available';
-      await property.save();
+      // Toggle between reserved and not reserved
+      const newIsReserved = !property.isReserved;
+      const newAvailable = newIsReserved ? false : true;
+
+      await Property.updateOne(
+        { _id: propertyId },
+        { 
+          isReserved: newIsReserved,
+          available: newAvailable
+        },
+        { runValidators: false }
+      );
+
+      // Get updated property
+      const updatedProperty = await Property.findById(propertyId);
 
       sendSuccess(res, 'Property status updated successfully', {
         property: {
-          id: property._id,
-          title: property.title,
-          status: property.status
+          id: updatedProperty._id,
+          title: updatedProperty.title,
+          available: updatedProperty.available,
+          isReserved: updatedProperty.isReserved
         }
       });
     } catch (error) {

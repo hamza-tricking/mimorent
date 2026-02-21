@@ -6,6 +6,7 @@ const { sendSuccess, sendError } = require('../utils/response.util');
 const { asyncHandler } = require('../middlewares/error.middleware');
 const Property = require('../models/property.model');
 const Reservation = require('../models/reservation.model');
+const User = require('../models/user.model');
 
 // GET /api/properties/wilaya/:wilayaId - Get properties by wilaya
 router.get('/wilaya/:wilayaId',
@@ -36,7 +37,23 @@ router.get('/reservations/employer/:employerId',
     try {
       const { employerId } = req.params;
       
-      const reservations = await Reservation.find({ employerId })
+      // Get employer's office ID
+      const employer = await User.findById(employerId);
+      if (!employer) {
+        return sendError(res, 'Employer not found', 404);
+      }
+      
+      // Get all properties in the employer's office
+      const officeProperties = await Property.find({ officeId: employer.officeId }).select('_id');
+      const propertyIds = officeProperties.map(p => p._id);
+      
+      // Get reservations for this employer AND reservations for properties in their office
+      const reservations = await Reservation.find({
+        $or: [
+          { employerId: employerId },
+          { propertyId: { $in: propertyIds } }
+        ]
+      })
         .populate('propertyId', 'title description pricePerDay')
         .sort({ createdAt: -1 });
 

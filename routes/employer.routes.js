@@ -38,10 +38,23 @@ router.get('/properties/wilaya/:wilayaId',
     try {
       const { wilayaId } = req.params;
       
+      console.log('=== DEBUG PROPERTIES BY WILAYA ===');
+      console.log('WilayaId:', wilayaId);
+      
       const properties = await Property.find({ wilayaId })
         .populate('officeId', 'name')
         .populate('wilayaId', 'name')
         .sort({ createdAt: -1 });
+
+      console.log('Properties found:', properties.length);
+      console.log('Properties:', properties.map(p => ({
+        _id: p._id,
+        title: p.title,
+        available: p.available,
+        isReserved: p.isReserved,
+        wilayaId: p.wilayaId
+      })));
+      console.log('=== END DEBUG ===');
 
       sendSuccess(res, 'Properties retrieved successfully', { properties });
     } catch (error) {

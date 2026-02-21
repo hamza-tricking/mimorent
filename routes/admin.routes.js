@@ -396,26 +396,52 @@ router.put('/properties/:id',
   asyncHandler(async (req, res) => {
     try {
       const propertyId = req.params.id;
-      const updates = req.body;
+      const { available, isReserved, ...otherUpdates } = req.body;
 
-      // Remove sensitive fields that shouldn't be updated directly
-      delete updates._id;
-      delete updates.createdAt;
-      delete updates.updatedAt;
-
-      const property = await Property.findByIdAndUpdate(
-        propertyId,
-        updates,
-        { new: true, runValidators: true }
-      );
-
+      // Check if property exists
+      const property = await Property.findById(propertyId);
       if (!property) {
         return sendError(res, 'Property not found', 404);
       }
 
-      sendSuccess(res, 'Property updated successfully', { property });
+      // Update status fields without triggering full validation
+      if (available !== undefined) {
+        await Property.updateOne(
+          { _id: propertyId },
+          { available: available },
+          { runValidators: false }
+        );
+      }
+      
+      if (isReserved !== undefined) {
+        await Property.updateOne(
+          { _id: propertyId },
+          { isReserved: isReserved },
+          { runValidators: false }
+        );
+      }
+
+      // Update other fields with validation if needed
+      if (Object.keys(otherUpdates).length > 0) {
+        // Remove sensitive fields
+        delete otherUpdates._id;
+        delete otherUpdates.createdAt;
+        delete otherUpdates.updatedAt;
+        
+        await Property.updateOne(
+          { _id: propertyId },
+          otherUpdates,
+          { runValidators: false }
+        );
+      }
+
+      // Get the updated property
+      const updatedProperty = await Property.findById(propertyId);
+
+      sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
     } catch (error) {
-      sendError(res, 'Failed to update property', error);
+      console.error('Update property error:', error);
+      sendError(res, 'Failed to update property', 500, error.message);
     }
   })
 );

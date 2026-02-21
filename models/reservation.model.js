@@ -105,8 +105,8 @@ reservationSchema.pre('save', function(next) {
   next();
 });
 
-// Post-save middleware to trigger notifications
-reservationSchema.post('save', function(doc) {
+// Post-save middleware to trigger notifications and update property status
+reservationSchema.post('save', async function(doc) {
   // Check if reservation is ending soon (within 1 day) and notification not sent
   const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const isEndingSoon = doc.endDate <= oneDayFromNow && doc.endDate > new Date();
@@ -118,6 +118,30 @@ reservationSchema.post('save', function(doc) {
     // Mark notification as sent (in a real implementation, this would be handled by a notification service)
     doc.notificationSent = true;
     doc.save().catch(err => console.error('Error updating notification status:', err));
+  }
+  
+  // Update property reservation status
+  try {
+    const Property = mongoose.model('Property');
+    const property = await Property.findById(doc.propertyId);
+    if (property) {
+      await property.updateReservationStatus();
+    }
+  } catch (error) {
+    console.error('Error updating property reservation status:', error);
+  }
+});
+
+// Post-remove middleware to update property status when reservation is deleted
+reservationSchema.post('remove', async function(doc) {
+  try {
+    const Property = mongoose.model('Property');
+    const property = await Property.findById(doc.propertyId);
+    if (property) {
+      await property.updateReservationStatus();
+    }
+  } catch (error) {
+    console.error('Error updating property reservation status after deletion:', error);
   }
 });
 

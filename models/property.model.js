@@ -75,6 +75,10 @@ const propertySchema = new mongoose.Schema({
   available: {
     type: Boolean,
     default: true
+  },
+  isReserved: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true,
@@ -87,6 +91,7 @@ propertySchema.index({ title: 'text', description: 'text' });
 propertySchema.index({ wilayaId: 1 });
 propertySchema.index({ officeId: 1 });
 propertySchema.index({ pricePerDay: 1 });
+propertySchema.index({ isReserved: 1 });
 propertySchema.index({ available: 1 });
 
 // Static method to find available properties
@@ -98,6 +103,27 @@ propertySchema.statics.findAvailable = function(filters = {}) {
 propertySchema.statics.findByWilaya = function(wilayaId) {
   return this.find({ wilayaId });
 };
+
+// Method to update reservation status
+propertySchema.methods.updateReservationStatus = async function() {
+  const Reservation = mongoose.model('Reservation');
+  const activeReservations = await Reservation.countDocuments({
+    propertyId: this._id,
+    status: { $in: ['pending', 'confirmed'] }
+  });
+  
+  this.isReserved = activeReservations > 0;
+  return this.save();
+};
+
+// Pre-save middleware to update reservation status if needed
+propertySchema.pre('save', function(next) {
+  // If available is false, make sure isReserved is also false
+  if (!this.available && this.isReserved) {
+    this.isReserved = false;
+  }
+  next();
+});
 
 // Static method to find properties by office
 propertySchema.statics.findByOffice = function(officeId) {

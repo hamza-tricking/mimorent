@@ -9,47 +9,20 @@ const Wilaya = require('../models/wilaya.model');
 router.get('/properties',
   asyncHandler(async (req, res) => {
     try {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 50;
-      const skip = (page - 1) * limit;
-      const search = req.query.search || '';
-      const wilayaId = req.query.wilayaId;
+      console.log('Public properties API called');
 
-      // Build filter object
-      const filter = { 
-        available: true,
-        isReserved: false 
-      };
-
-      // Add wilaya filter if provided
-      if (wilayaId) {
-        filter.wilayaId = wilayaId;
-      }
-
-      // Add search filter if provided
-      if (search) {
-        filter.$text = { $search: search };
-      }
-
-      // Get properties with pagination
-      const properties = await Property.find(filter)
+      // Get all properties first without any filtering
+      const allProperties = await Property.find({})
         .populate('wilayaId', 'name')
         .populate('officeId', 'name')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit);
+        .sort({ createdAt: -1 });
 
-      // Get total count for pagination
-      const total = await Property.countDocuments(filter);
+      console.log('Total properties found:', allProperties.length);
+      console.log('Sample property:', allProperties[0]);
 
+      // For now, return all properties to debug
       sendSuccess(res, 'Properties retrieved successfully', {
-        properties,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit)
-        }
+        properties: allProperties
       });
     } catch (error) {
       console.error('Get public properties error:', error);

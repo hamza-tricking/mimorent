@@ -7,6 +7,28 @@ const { asyncHandler } = require('../middlewares/error.middleware');
 const Property = require('../models/property.model');
 const Reservation = require('../models/reservation.model');
 const User = require('../models/user.model');
+const Wilaya = require('../models/wilaya.model');
+
+// GET /api/employer/wilaya/:wilayaId - Get wilaya info
+router.get('/wilaya/:wilayaId',
+  auth,
+  employerOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const { wilayaId } = req.params;
+      
+      const wilaya = await Wilaya.findById(wilayaId);
+      if (!wilaya) {
+        return sendError(res, 'Wilaya not found', 404);
+      }
+
+      sendSuccess(res, 'Wilaya retrieved successfully', { wilaya });
+    } catch (error) {
+      console.error('Get wilaya error:', error);
+      sendError(res, 'Failed to retrieve wilaya', 500, error.message);
+    }
+  })
+);
 
 // GET /api/employer/properties/wilaya/:wilayaId - Get properties by wilaya
 router.get('/properties/wilaya/:wilayaId',

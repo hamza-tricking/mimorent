@@ -398,36 +398,54 @@ router.put('/properties/:id',
       const propertyId = req.params.id;
       const { available, isReserved, ...otherUpdates } = req.body;
 
+      console.log(`=== PROPERTY UPDATE DEBUG ===`);
+      console.log(`Property ID: ${propertyId}`);
+      console.log(`Request body:`, req.body);
+
       // Check if property exists
       const property = await Property.findById(propertyId);
       if (!property) {
         return sendError(res, 'Property not found', 404);
       }
 
-      // Log current state
-      console.log(`BEFORE UPDATE - Property ${propertyId}: available=${property.available}, isReserved=${property.isReserved}`);
-      console.log(`REQUEST BODY:`, req.body);
+      console.log(`Current state: available=${property.available}, isReserved=${property.isReserved}`);
 
-      // Direct update using findByIdAndUpdate for better reliability
+      // Use updateOne to bypass any middleware or hooks
       const updateData = {};
       if (available !== undefined) updateData.available = available;
       if (isReserved !== undefined) updateData.isReserved = isReserved;
 
-      console.log(`UPDATE DATA:`, updateData);
+      console.log(`Update data:`, updateData);
 
-      const updatedProperty = await Property.findByIdAndUpdate(
-        propertyId,
-        updateData,
-        { new: true, runValidators: false }
+      // Direct database update using updateOne to bypass all middleware
+      const updateResult = await Property.updateOne(
+        { _id: propertyId },
+        { $set: updateData },
+        { runValidators: false }
       );
 
-      console.log(`AFTER UPDATE - Property ${propertyId}: available=${updatedProperty.available}, isReserved=${updatedProperty.isReserved}`);
+      console.log(`Update result:`, updateResult);
 
-      // Verify the update actually happened by querying again
-      const verification = await Property.findById(propertyId);
-      console.log(`VERIFICATION - Property ${propertyId}: available=${verification.available}, isReserved=${verification.isReserved}`);
+      // Fetch the updated property to verify
+      const updatedProperty = await Property.findById(propertyId);
+      console.log(`After update: available=${updatedProperty.available}, isReserved=${updatedProperty.isReserved}`);
 
-      sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
+      // If isReserved is still true, force it with another update
+      if (isReserved === false && updatedProperty.isReserved === true) {
+        console.log(`Forcing isReserved to false with direct update...`);
+        await Property.updateOne(
+          { _id: propertyId },
+          { $set: { isReserved: false } },
+          { runValidators: false }
+        );
+        
+        // Fetch again
+        const finalProperty = await Property.findById(propertyId);
+        console.log(`After force update: available=${finalProperty.available}, isReserved=${finalProperty.isReserved}`);
+        sendSuccess(res, 'Property updated successfully', { property: finalProperty });
+      } else {
+        sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
+      }
     } catch (error) {
       console.error('Update property error:', error);
       sendError(res, 'Failed to update property', 500, error.message);

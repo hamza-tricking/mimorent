@@ -4,6 +4,7 @@ const { sendSuccess, sendError } = require('../utils/response.util');
 const { asyncHandler } = require('../middlewares/error.middleware');
 const Property = require('../models/property.model');
 const Wilaya = require('../models/wilaya.model');
+const Reservation = require('../models/reservation.model');
 
 // GET /api/properties - Get all available properties (public)
 router.get('/properties',
@@ -19,8 +20,29 @@ router.get('/properties',
 
       console.log('Available properties found:', properties.length);
 
+      // Add reservation end date for reserved properties
+      const propertiesWithReservationInfo = await Promise.all(
+        properties.map(async (property) => {
+          const propertyObj = property.toObject();
+          
+          if (property.isReserved) {
+            // Get the most recent active reservation for this property
+            const activeReservation = await Reservation.findOne({
+              propertyId: property._id,
+              status: { $in: ['pending', 'confirmed'] }
+            }).sort({ endDate: -1 }).select('endDate');
+            
+            if (activeReservation) {
+              propertyObj.reservationEndDate = activeReservation.endDate;
+            }
+          }
+          
+          return propertyObj;
+        })
+      );
+
       sendSuccess(res, 'Properties retrieved successfully', {
-        properties
+        properties: propertiesWithReservationInfo
       });
     } catch (error) {
       console.error('Get public properties error:', error);

@@ -18,6 +18,23 @@ router.get('/financial-stats',
     try {
       const { wilayaId, officeId, employerId } = req.query;
       
+      // First, let's check if we have any reservations at all
+      const totalReservations = await Reservation.countDocuments();
+      console.log('🟢 Total reservations in DB:', totalReservations);
+      
+      if (totalReservations === 0) {
+        // Return empty stats if no reservations exist
+        const emptyStats = {
+          daily: { totalRevenue: 0, totalPaid: 0, totalPending: 0, reservationCount: 0 },
+          weekly: { totalRevenue: 0, totalPaid: 0, totalPending: 0, reservationCount: 0 },
+          monthly: { totalRevenue: 0, totalPaid: 0, totalPending: 0, reservationCount: 0 },
+          byWilaya: [],
+          byOffice: [],
+          byEmployer: []
+        };
+        return sendSuccess(res, 'No reservations found', emptyStats);
+      }
+      
       // Get current date ranges
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -25,8 +42,10 @@ router.get('/financial-stats',
       weekStart.setDate(today.getDate() - today.getDay());
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       
+      console.log('🟢 Date ranges - Today:', today, 'Week Start:', weekStart, 'Month Start:', monthStart);
+      
       // Helper function to get stats for a date range
-      const getStatsForDateRange = async (startDate, endDate) => {
+      const getStatsForDateRange = async (startDate, endDate, rangeName) => {
         const matchQuery = {
           createdAt: {
             $gte: startDate,
@@ -36,6 +55,8 @@ router.get('/financial-stats',
         
         // Add filters if provided
         if (employerId) matchQuery.employerId = new mongoose.Types.ObjectId(employerId);
+        
+        console.log(`🟢 ${rangeName} query:`, matchQuery);
         
         const stats = await Reservation.aggregate([
           { $match: matchQuery },
@@ -62,18 +83,21 @@ router.get('/financial-stats',
           }
         ]);
         
-        return stats[0] || {
+        const result = stats[0] || {
           totalRevenue: 0,
           totalPaid: 0,
           totalPending: 0,
           reservationCount: 0
         };
+        
+        console.log(`🟢 ${rangeName} stats:`, result);
+        return result;
       };
       
       // Get stats for different periods
-      const dailyStats = await getStatsForDateRange(today, new Date(today.getTime() + 24 * 60 * 60 * 1000));
-      const weeklyStats = await getStatsForDateRange(weekStart, new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000));
-      const monthlyStats = await getStatsForDateRange(monthStart, new Date(now.getFullYear(), now.getMonth() + 1, 1));
+      const dailyStats = await getStatsForDateRange(today, new Date(today.getTime() + 24 * 60 * 60 * 1000), 'Daily');
+      const weeklyStats = await getStatsForDateRange(weekStart, new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000), 'Weekly');
+      const monthlyStats = await getStatsForDateRange(monthStart, new Date(now.getFullYear(), now.getMonth() + 1, 1), 'Monthly');
       
       // Get stats by wilaya
       const wilayaStats = await Reservation.aggregate([
@@ -166,11 +190,19 @@ router.get('/financial-stats',
             as: 'employer'
           }
         },
-        { $unwind: '$employer' },
+        { $unwind: { path: '$employer', preserveNullAndEmptyArrays: true } },
         {
           $group: {
             _id: '$employerId',
-            employerName: { $first: { $concat: ['$employer.firstName', ' ', '$employer.lastName'] } },
+            employerName: { 
+              $first: { 
+                $cond: {
+                  if: { $ne: ['$employer', null] },
+                  then: { $concat: ['$employer.firstName', ' ', '$employer.lastName'] },
+                  else: 'Unknown Employer'
+                }
+              }
+            },
             totalRevenue: { $sum: '$totalPrice' },
             totalPaid: { $sum: '$paidAmount' },
             totalPending: { $sum: '$remainingAmount' },
@@ -189,7 +221,7 @@ router.get('/financial-stats',
         byEmployer: employerStats
       };
       
-      console.log('🟢 BACKEND: Financial stats generated:', responseData);
+      console.log('🟢 BACKEND: Final financial stats response:', responseData);
       
       sendSuccess(res, 'Financial statistics retrieved successfully', responseData);
     } catch (error) {

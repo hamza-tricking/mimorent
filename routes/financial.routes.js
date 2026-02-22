@@ -16,7 +16,9 @@ router.get('/financial-stats',
   adminOnly,
   asyncHandler(async (req, res) => {
     try {
-      const { wilayaId, officeId, employerId } = req.query;
+      const { wilayaId, officeId, employerId, period } = req.query;
+      
+      console.log('🔍 Request params:', { wilayaId, officeId, employerId, period });
       
       // First, let's check if we have any reservations at all
       const totalReservations = await Reservation.countDocuments();
@@ -191,13 +193,26 @@ router.get('/financial-stats',
         return result;
       };
       
-      // Get stats for different periods
-      const dailyStats = await getStatsForDateRange(today, tomorrow, 'Daily');
-      const weeklyStats = await getStatsForDateRange(weekStart, weekEnd, 'Weekly');
-      const monthlyStats = await getStatsForDateRange(monthStart, monthEnd, 'Monthly');
+      // Get stats for different periods - only calculate what's requested
+      let dailyStats, weeklyStats, monthlyStats, allTimeStats;
       
-      // Get all time stats (no date filter)
-      const allTimeStats = await getStatsForDateRange(new Date(0), new Date(), 'All Time');
+      if (!period || period === 'all') {
+        // Calculate all periods only if no specific period requested
+        dailyStats = await getStatsForDateRange(today, tomorrow, 'Daily');
+        weeklyStats = await getStatsForDateRange(weekStart, weekEnd, 'Weekly');
+        monthlyStats = await getStatsForDateRange(monthStart, monthEnd, 'Monthly');
+        allTimeStats = await getStatsForDateRange(new Date(0), new Date(), 'All Time');
+      } else if (period === 'day') {
+        dailyStats = await getStatsForDateRange(today, tomorrow, 'Daily');
+        // For consistency, set all to the same result when a specific period is requested
+        weeklyStats = monthlyStats = allTimeStats = dailyStats;
+      } else if (period === 'week') {
+        weeklyStats = await getStatsForDateRange(weekStart, weekEnd, 'Weekly');
+        dailyStats = monthlyStats = allTimeStats = weeklyStats;
+      } else if (period === 'month') {
+        monthlyStats = await getStatsForDateRange(monthStart, monthEnd, 'Monthly');
+        dailyStats = weeklyStats = allTimeStats = monthlyStats;
+      }
       
       // Get stats by wilaya (comprehensive)
       const wilayaStats = await Reservation.aggregate([

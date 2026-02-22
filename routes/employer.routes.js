@@ -43,6 +43,11 @@ router.get('/properties/wilaya/:wilayaId',
         .populate('wilayaId', 'name')
         .sort({ createdAt: -1 });
 
+      console.log('Employer properties API - Properties found:', properties.length); // Debug log
+      properties.forEach((property, index) => {
+        console.log(`Property ${index + 1}: ${property.title}, isReserved: ${property.isReserved}`); // Debug log
+      });
+
       sendSuccess(res, 'Properties retrieved successfully', { properties });
     } catch (error) {
       console.error('Get properties by wilaya error:', error);

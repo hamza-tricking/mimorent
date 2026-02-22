@@ -60,18 +60,11 @@ router.put('/properties/:id',
       const propertyId = req.params.id;
       const { available, isReserved } = req.body;
 
-      console.log('Update request:', { propertyId, available, isReserved }); // Debug log
-
       // Check if property exists
       const property = await Property.findById(propertyId);
       if (!property) {
         return sendError(res, 'Property not found', 404);
       }
-
-      console.log('Property before update:', {
-        available: property.available,
-        isReserved: property.isReserved
-      }); // Debug log
 
       // Build update object
       const updateData = {};
@@ -82,8 +75,6 @@ router.put('/properties/:id',
       if (isReserved !== undefined) {
         updateData.isReserved = isReserved;
       }
-
-      console.log('Update data:', updateData); // Debug log
 
       // Only update if there's something to update
       if (Object.keys(updateData).length > 0) {
@@ -97,10 +88,6 @@ router.put('/properties/:id',
             context: 'manual' // Add context to identify manual updates
           }
         );
-        console.log('Updated property:', {
-          available: updatedProperty.available,
-          isReserved: updatedProperty.isReserved
-        }); // Debug log
 
         sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
         return;

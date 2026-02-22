@@ -462,6 +462,57 @@ router.get('/properties/:id/debug',
 
 // Remove the conflicting PUT route - it's handled in property.routes.js
 
+// PUT /api/admin/properties/:id - Update property (for admin)
+router.put('/properties/:id',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const propertyId = req.params.id;
+      const { available, isReserved } = req.body;
+
+      // Check if property exists
+      const property = await Property.findById(propertyId);
+      if (!property) {
+        return sendError(res, 'Property not found', 404);
+      }
+
+      // Build update object
+      const updateData = {};
+      if (available !== undefined) {
+        updateData.available = available;
+      }
+      
+      if (isReserved !== undefined) {
+        updateData.isReserved = isReserved;
+      }
+
+      // Only update if there's something to update
+      if (Object.keys(updateData).length > 0) {
+        // Use findOneAndUpdate to bypass middleware and ensure atomic update
+        const updatedProperty = await Property.findOneAndUpdate(
+          { _id: propertyId },
+          updateData,
+          { 
+            new: true, 
+            runValidators: false,
+            context: 'manual' // Add context to identify manual updates
+          }
+        );
+
+        sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
+        return;
+      }
+
+      // If no update needed, return original property
+      sendSuccess(res, 'Property updated successfully', { property });
+    } catch (error) {
+      console.error('Update property error:', error);
+      sendError(res, 'Failed to update property', 500, error.message);
+    }
+  })
+);
+
 // PATCH /api/admin/properties/:id/toggle-status - Toggle property status
 router.patch('/properties/:id/toggle-status',
   auth,

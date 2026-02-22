@@ -101,6 +101,7 @@ router.get('/financial-stats',
       
       // Get stats by wilaya
       const wilayaStats = await Reservation.aggregate([
+        // Apply filters at the beginning
         ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
         {
           $lookup: {
@@ -111,7 +112,10 @@ router.get('/financial-stats',
           }
         },
         { $unwind: '$property' },
+        // Apply property-based filters after lookup
         ...(officeId ? [{ $match: { 'property.officeId': new mongoose.Types.ObjectId(officeId) } }] : []),
+        // If wilayaId is provided, only return that specific wilaya
+        ...(wilayaId ? [{ $match: { 'property.wilayaId': new mongoose.Types.ObjectId(wilayaId) } }] : []),
         {
           $lookup: {
             from: 'wilayas',
@@ -136,8 +140,8 @@ router.get('/financial-stats',
       
       // Get stats by office
       const officeStats = await Reservation.aggregate([
+        // Apply filters at the beginning
         ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
-        ...(wilayaId ? [{ $match: { 'property.wilayaId': new mongoose.Types.ObjectId(wilayaId) } }] : []),
         {
           $lookup: {
             from: 'properties',
@@ -147,6 +151,10 @@ router.get('/financial-stats',
           }
         },
         { $unwind: '$property' },
+        // Apply property-based filters after lookup
+        ...(wilayaId ? [{ $match: { 'property.wilayaId': new mongoose.Types.ObjectId(wilayaId) } }] : []),
+        // If officeId is provided, only return that specific office
+        ...(officeId ? [{ $match: { 'property.officeId': new mongoose.Types.ObjectId(officeId) } }] : []),
         {
           $lookup: {
             from: 'offices',
@@ -180,8 +188,11 @@ router.get('/financial-stats',
           }
         },
         { $unwind: '$property' },
+        // Apply property-based filters after lookup
         ...(wilayaId ? [{ $match: { 'property.wilayaId': new mongoose.Types.ObjectId(wilayaId) } }] : []),
         ...(officeId ? [{ $match: { 'property.officeId': new mongoose.Types.ObjectId(officeId) } }] : []),
+        // If employerId is provided, only return that specific employer
+        ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
         {
           $lookup: {
             from: 'users',

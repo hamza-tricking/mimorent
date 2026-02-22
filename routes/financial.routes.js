@@ -99,6 +99,9 @@ router.get('/financial-stats',
       const weeklyStats = await getStatsForDateRange(weekStart, new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000), 'Weekly');
       const monthlyStats = await getStatsForDateRange(monthStart, new Date(now.getFullYear(), now.getMonth() + 1, 1), 'Monthly');
       
+      // Get all time stats (no date filter)
+      const allTimeStats = await getStatsForDateRange(new Date(0), new Date(), 'All Time');
+      
       // Get stats by wilaya
       const wilayaStats = await Reservation.aggregate([
         // Apply filters at the beginning
@@ -224,6 +227,7 @@ router.get('/financial-stats',
       ]);
       
       const responseData = {
+        all: allTimeStats,
         daily: dailyStats,
         weekly: weeklyStats,
         monthly: monthlyStats,

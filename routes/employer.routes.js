@@ -60,33 +60,54 @@ router.put('/properties/:id',
       const propertyId = req.params.id;
       const { available, isReserved } = req.body;
 
+      console.log('Update request:', { propertyId, available, isReserved }); // Debug log
+
       // Check if property exists
       const property = await Property.findById(propertyId);
       if (!property) {
         return sendError(res, 'Property not found', 404);
       }
 
-      // Update only the status fields without triggering full validation
+      console.log('Property before update:', {
+        available: property.available,
+        isReserved: property.isReserved
+      }); // Debug log
+
+      // Build update object
+      const updateData = {};
       if (available !== undefined) {
-        await Property.updateOne(
-          { _id: propertyId },
-          { available: available },
-          { runValidators: false }
-        );
+        updateData.available = available;
       }
       
       if (isReserved !== undefined) {
-        await Property.updateOne(
-          { _id: propertyId },
-          { isReserved: isReserved },
-          { runValidators: false }
-        );
+        updateData.isReserved = isReserved;
       }
 
-      // Get the updated property
-      const updatedProperty = await Property.findById(propertyId);
+      console.log('Update data:', updateData); // Debug log
 
-      sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
+      // Only update if there's something to update
+      if (Object.keys(updateData).length > 0) {
+        // Use findOneAndUpdate to bypass middleware and ensure atomic update
+        const updatedProperty = await Property.findOneAndUpdate(
+          { _id: propertyId },
+          updateData,
+          { 
+            new: true, 
+            runValidators: false,
+            context: 'manual' // Add context to identify manual updates
+          }
+        );
+        console.log('Updated property:', {
+          available: updatedProperty.available,
+          isReserved: updatedProperty.isReserved
+        }); // Debug log
+
+        sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
+        return;
+      }
+
+      // If no update needed, return original property
+      sendSuccess(res, 'Property updated successfully', { property });
     } catch (error) {
       console.error('Update property error:', error);
       sendError(res, 'Failed to update property', 500, error.message);

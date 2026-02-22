@@ -50,7 +50,8 @@ router.get('/financial-stats',
           startDate: {
             $gte: startDate,
             $lt: endDate
-          }
+          },
+          status: 'completed' // Only include completed reservations for revenue calculations
         };
         
         // Add filters if provided
@@ -75,10 +76,10 @@ router.get('/financial-stats',
           {
             $group: {
               _id: null,
-              totalRevenue: { $sum: '$totalPrice' },
+              totalRevenue: { $sum: '$totalPrice' }, // Revenue from completed reservations only
               totalPaid: { $sum: '$paidAmount' },
               totalPending: { $sum: '$remainingAmount' },
-              reservationCount: { $sum: 1 }
+              reservationCount: { $sum: 1 } // Count of completed reservations only
             }
           }
         ]);
@@ -90,7 +91,7 @@ router.get('/financial-stats',
           reservationCount: 0
         };
         
-        console.log(`🟢 ${rangeName} stats:`, result);
+        console.log(`🟢 ${rangeName} stats (completed only):`, result);
         return result;
       };
       
@@ -104,7 +105,8 @@ router.get('/financial-stats',
       
       // Get stats by wilaya
       const wilayaStats = await Reservation.aggregate([
-        // Apply filters at the beginning
+        // Apply status filter and other filters at the beginning
+        { $match: { status: 'completed' } }, // Only include completed reservations
         ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
         {
           $lookup: {
@@ -132,10 +134,10 @@ router.get('/financial-stats',
           $group: {
             _id: '$property.wilayaId',
             wilayaName: { $first: '$wilaya.name' },
-            totalRevenue: { $sum: '$totalPrice' },
+            totalRevenue: { $sum: '$totalPrice' }, // Revenue from completed reservations only
             totalPaid: { $sum: '$paidAmount' },
             totalPending: { $sum: '$remainingAmount' },
-            reservationCount: { $sum: 1 }
+            reservationCount: { $sum: 1 } // Count of completed reservations only
           }
         },
         { $sort: { totalRevenue: -1 } }

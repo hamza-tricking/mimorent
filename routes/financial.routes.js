@@ -16,9 +16,9 @@ router.get('/financial-stats',
   adminOnly,
   asyncHandler(async (req, res) => {
     try {
-      const { wilayaId, officeId, employerId } = req.query;
+      const { wilayaId, officeId, employerId, startDate, endDate } = req.query;
       
-      console.log('🔍 Request params:', { wilayaId, officeId, employerId });
+      console.log('🔍 Request params:', { wilayaId, officeId, employerId, startDate, endDate });
       
       // First, let's check if we have any reservations at all
       const totalReservations = await Reservation.countDocuments();
@@ -54,10 +54,14 @@ router.get('/financial-stats',
       
       // Helper function to get stats for a date range
       const getStatsForDateRange = async (startDate, endDate, rangeName) => {
+        // If custom date range is provided, use it instead
+        const actualStartDate = startDate && endDate ? new Date(startDate) : startDate;
+        const actualEndDate = startDate && endDate ? new Date(endDate) : endDate;
+        
         const matchQuery = {
           createdAt: {
-            $gte: startDate,
-            $lt: endDate
+            $gte: actualStartDate,
+            $lt: actualEndDate
           }
         };
         
@@ -65,7 +69,7 @@ router.get('/financial-stats',
         if (employerId) matchQuery.employerId = new mongoose.Types.ObjectId(employerId);
         
         console.log(`🟢 ${rangeName} query:`, matchQuery);
-        console.log(`🟢 ${rangeName} date range: ${startDate} to ${endDate}`);
+        console.log(`🟢 ${rangeName} date range: ${actualStartDate} to ${actualEndDate}`);
         
         // Get overall stats (all reservations)
         const overallStats = await Reservation.aggregate([
@@ -193,18 +197,38 @@ router.get('/financial-stats',
         return result;
       };
       
-      // Get stats for different periods - always calculate all periods
-      const dailyStats = await getStatsForDateRange(today, tomorrow, 'Daily');
-      const weeklyStats = await getStatsForDateRange(weekStart, weekEnd, 'Weekly');
-      const monthlyStats = await getStatsForDateRange(monthStart, monthEnd, 'Monthly');
+      // Get stats for different periods - use custom date range if provided, otherwise use predefined periods
+      let dailyStats, weeklyStats, monthlyStats, allTimeStats;
       
-      // Get all time stats (no date filter)
-      const allTimeStats = await getStatsForDateRange(new Date(0), new Date(), 'All Time');
+      if (startDate && endDate) {
+        // Use custom date range for all stats
+        const customStats = await getStatsForDateRange(startDate, endDate, 'Custom Range');
+        dailyStats = weeklyStats = monthlyStats = allTimeStats = customStats;
+      } else {
+        // Use predefined periods
+        dailyStats = await getStatsForDateRange(today, tomorrow, 'Daily');
+        weeklyStats = await getStatsForDateRange(weekStart, weekEnd, 'Weekly');
+        monthlyStats = await getStatsForDateRange(monthStart, monthEnd, 'Monthly');
+        allTimeStats = await getStatsForDateRange(new Date(0), new Date(), 'All Time');
+      }
       
       // Get stats by wilaya (comprehensive)
+      const wilayaMatchQuery = {};
+      
+      // Add date range filter if provided
+      if (startDate && endDate) {
+        wilayaMatchQuery.createdAt = {
+          $gte: new Date(startDate),
+          $lt: new Date(endDate)
+        };
+      }
+      
+      // Add other filters
+      if (employerId) wilayaMatchQuery.employerId = new mongoose.Types.ObjectId(employerId);
+      
       const wilayaStats = await Reservation.aggregate([
         // Apply filters at the beginning
-        ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
+        { $match: wilayaMatchQuery },
         {
           $lookup: {
             from: 'properties',

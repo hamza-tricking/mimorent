@@ -204,9 +204,10 @@ router.get('/',
   asyncHandler(async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
+      const limit = parseInt(req.query.limit) || 50; // Increased limit for details view
       const skip = (page - 1) * limit;
       const search = req.query.search || '';
+      const { wilayaId, officeId, employerId } = req.query;
 
       // Build filter object
       const filter = {};
@@ -217,9 +218,30 @@ router.get('/',
         ];
       }
 
+      // Handle location-based filters
+      if (wilayaId || officeId || employerId) {
+        // Need to lookup properties to filter by location
+        const propertyFilter = {};
+        if (wilayaId) propertyFilter.wilayaId = wilayaId;
+        if (officeId) propertyFilter.officeId = officeId;
+        
+        if (Object.keys(propertyFilter).length > 0) {
+          const properties = await Property.find(propertyFilter).select('_id');
+          const propertyIds = properties.map(p => p._id);
+          filter.propertyId = { $in: propertyIds };
+        }
+      }
+
+      // Handle employer filter
+      if (employerId) {
+        filter.employerId = employerId;
+      }
+
+      console.log('🔍 Reservation filter:', filter);
+
       const reservations = await Reservation.find(filter)
         .populate([
-          { path: 'propertyId', select: 'title description pricePerDay' },
+          { path: 'propertyId', select: 'title description pricePerDay wilayaId officeId' },
           { path: 'employerId', select: 'username firstName lastName' }
         ])
         .sort({ createdAt: -1 })
@@ -228,8 +250,10 @@ router.get('/',
 
       const total = await Reservation.countDocuments(filter);
 
+      console.log(`📊 Found ${reservations.length} reservations (total: ${total})`);
+
       sendSuccess(res, 'Reservations retrieved successfully', {
-        reservations,
+        data: reservations, // Changed to 'data' to match frontend expectation
         pagination: {
           page,
           limit,

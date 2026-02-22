@@ -799,7 +799,7 @@ router.get('/history',
 
       const history = await History.find(filter)
         .populate('userId', 'username firstName lastName email')
-        .populate('entityId')
+        .populate('reservationId')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);

@@ -15,8 +15,11 @@ const historySchema = new mongoose.Schema({
   },
   entityId: {
     type: mongoose.Schema.Types.ObjectId,
-    required: [true, 'Entity ID is required'],
-    refPath: 'entityType'
+    required: [true, 'Entity ID is required']
+  },
+  reservationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Reservation'
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -72,6 +75,7 @@ historySchema.statics.createReservationHistory = async function(data) {
     action,
     entityType: 'reservation',
     entityId: reservationId,
+    reservationId: reservationId,
     userId,
     description,
     metadata,
@@ -92,7 +96,7 @@ historySchema.statics.getReservationHistory = async function(filters = {}, optio
   
   const history = await this.find(query)
     .populate('userId', 'username firstName lastName email')
-    .populate('entityId', 'customerName customerPhone totalPrice status')
+    .populate('reservationId', 'customerName customerPhone totalPrice status')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);

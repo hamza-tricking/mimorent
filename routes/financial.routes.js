@@ -38,16 +38,22 @@ router.get('/financial-stats',
       // Get current date ranges
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
       const weekStart = new Date(today);
       weekStart.setDate(today.getDate() - today.getDay());
+      const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
       
-      console.log('🟢 Date ranges - Today:', today, 'Week Start:', weekStart, 'Month Start:', monthStart);
+      console.log('🟢 Date ranges:');
+      console.log('  Today:', today, 'to', tomorrow);
+      console.log('  Week:', weekStart, 'to', weekEnd);
+      console.log('  Month:', monthStart, 'to', monthEnd);
       
       // Helper function to get stats for a date range
       const getStatsForDateRange = async (startDate, endDate, rangeName) => {
         const matchQuery = {
-          startDate: {
+          createdAt: {
             $gte: startDate,
             $lt: endDate
           }
@@ -57,6 +63,7 @@ router.get('/financial-stats',
         if (employerId) matchQuery.employerId = new mongoose.Types.ObjectId(employerId);
         
         console.log(`🟢 ${rangeName} query:`, matchQuery);
+        console.log(`🟢 ${rangeName} date range: ${startDate} to ${endDate}`);
         
         // Get overall stats (all reservations)
         const overallStats = await Reservation.aggregate([
@@ -84,6 +91,9 @@ router.get('/financial-stats',
           }
         ]);
         
+        console.log(`🟢 ${rangeName} overall stats:`, overallStats);
+        console.log(`🟢 ${rangeName} found ${overallStats[0]?.reservationCount || 0} reservations`);
+        
         // Get completed reservations stats (for actual revenue)
         const completedMatchQuery = { ...matchQuery, status: 'completed' };
         const completedStats = await Reservation.aggregate([
@@ -110,6 +120,9 @@ router.get('/financial-stats',
             }
           }
         ]);
+        
+        console.log(`🟢 ${rangeName} completed stats:`, completedStats);
+        console.log(`🟢 ${rangeName} found ${completedStats[0]?.completedCount || 0} completed reservations`);
         
         // Get breakdown by status
         const statusBreakdown = await Reservation.aggregate([
@@ -179,9 +192,9 @@ router.get('/financial-stats',
       };
       
       // Get stats for different periods
-      const dailyStats = await getStatsForDateRange(today, new Date(today.getTime() + 24 * 60 * 60 * 1000), 'Daily');
-      const weeklyStats = await getStatsForDateRange(weekStart, new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000), 'Weekly');
-      const monthlyStats = await getStatsForDateRange(monthStart, new Date(now.getFullYear(), now.getMonth() + 1, 1), 'Monthly');
+      const dailyStats = await getStatsForDateRange(today, tomorrow, 'Daily');
+      const weeklyStats = await getStatsForDateRange(weekStart, weekEnd, 'Weekly');
+      const monthlyStats = await getStatsForDateRange(monthStart, monthEnd, 'Monthly');
       
       // Get all time stats (no date filter)
       const allTimeStats = await getStatsForDateRange(new Date(0), new Date(), 'All Time');

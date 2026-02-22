@@ -47,7 +47,7 @@ router.get('/financial-stats',
       // Helper function to get stats for a date range
       const getStatsForDateRange = async (startDate, endDate, rangeName) => {
         const matchQuery = {
-          createdAt: {
+          startDate: {
             $gte: startDate,
             $lt: endDate
           }

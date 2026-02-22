@@ -6,8 +6,10 @@ const { sendSuccess, sendError } = require('../utils/response.util');
 const { asyncHandler } = require('../middlewares/error.middleware');
 const Property = require('../models/property.model');
 const Reservation = require('../models/reservation.model');
+const History = require('../models/history.model');
 const User = require('../models/user.model');
 const Wilaya = require('../models/wilaya.model');
+const mongoose = require('mongoose');
 
 // GET /api/employer/wilaya/:wilayaId - Get wilaya info
 router.get('/wilaya/:wilayaId',
@@ -209,7 +211,6 @@ router.post('/reservations',
 
       // Log history entry for reservation creation
       try {
-        const History = mongoose.model('History');
         await History.createReservationHistory({
           action: 'reservation_created',
           reservationId: reservation._id,

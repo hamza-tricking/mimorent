@@ -35,7 +35,7 @@ router.get('/financial-stats',
         };
         
         // Add filters if provided
-        if (employerId) matchQuery.employerId = mongoose.Types.ObjectId(employerId);
+        if (employerId) matchQuery.employerId = new mongoose.Types.ObjectId(employerId);
         
         const stats = await Reservation.aggregate([
           { $match: matchQuery },
@@ -49,8 +49,8 @@ router.get('/financial-stats',
           },
           { $unwind: '$property' },
           // Add property-based filters
-          ...(wilayaId ? [{ $match: { 'property.wilayaId': mongoose.Types.ObjectId(wilayaId) } }] : []),
-          ...(officeId ? [{ $match: { 'property.officeId': mongoose.Types.ObjectId(officeId) } }] : []),
+          ...(wilayaId ? [{ $match: { 'property.wilayaId': new mongoose.Types.ObjectId(wilayaId) } }] : []),
+          ...(officeId ? [{ $match: { 'property.officeId': new mongoose.Types.ObjectId(officeId) } }] : []),
           {
             $group: {
               _id: null,
@@ -77,7 +77,7 @@ router.get('/financial-stats',
       
       // Get stats by wilaya
       const wilayaStats = await Reservation.aggregate([
-        ...(employerId ? [{ $match: { employerId: mongoose.Types.ObjectId(employerId) } }] : []),
+        ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
         {
           $lookup: {
             from: 'properties',
@@ -87,7 +87,7 @@ router.get('/financial-stats',
           }
         },
         { $unwind: '$property' },
-        ...(officeId ? [{ $match: { 'property.officeId': mongoose.Types.ObjectId(officeId) } }] : []),
+        ...(officeId ? [{ $match: { 'property.officeId': new mongoose.Types.ObjectId(officeId) } }] : []),
         {
           $lookup: {
             from: 'wilayas',
@@ -112,8 +112,8 @@ router.get('/financial-stats',
       
       // Get stats by office
       const officeStats = await Reservation.aggregate([
-        ...(employerId ? [{ $match: { employerId: mongoose.Types.ObjectId(employerId) } }] : []),
-        ...(wilayaId ? [{ $match: { 'property.wilayaId': mongoose.Types.ObjectId(wilayaId) } }] : []),
+        ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
+        ...(wilayaId ? [{ $match: { 'property.wilayaId': new mongoose.Types.ObjectId(wilayaId) } }] : []),
         {
           $lookup: {
             from: 'properties',
@@ -156,8 +156,8 @@ router.get('/financial-stats',
           }
         },
         { $unwind: '$property' },
-        ...(wilayaId ? [{ $match: { 'property.wilayaId': mongoose.Types.ObjectId(wilayaId) } }] : []),
-        ...(officeId ? [{ $match: { 'property.officeId': mongoose.Types.ObjectId(officeId) } }] : []),
+        ...(wilayaId ? [{ $match: { 'property.wilayaId': new mongoose.Types.ObjectId(wilayaId) } }] : []),
+        ...(officeId ? [{ $match: { 'property.officeId': new mongoose.Types.ObjectId(officeId) } }] : []),
         {
           $lookup: {
             from: 'users',

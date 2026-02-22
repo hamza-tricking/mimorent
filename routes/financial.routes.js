@@ -200,12 +200,17 @@ router.get('/financial-stats',
       // Get stats for different periods - use custom date range if provided, otherwise use predefined periods
       let dailyStats, weeklyStats, monthlyStats, allTimeStats;
       
+      console.log('🔍 Date range parameters:', { startDate, endDate });
+      console.log('🔍 Start date type:', typeof startDate, 'End date type:', typeof endDate);
+      
       if (startDate && endDate) {
         // Use custom date range for all stats
+        console.log('🎯 Using custom date range for all stats');
         const customStats = await getStatsForDateRange(startDate, endDate, 'Custom Range');
         dailyStats = weeklyStats = monthlyStats = allTimeStats = customStats;
       } else {
         // Use predefined periods
+        console.log('🎯 Using predefined periods (no custom date range)');
         dailyStats = await getStatsForDateRange(today, tomorrow, 'Daily');
         weeklyStats = await getStatsForDateRange(weekStart, weekEnd, 'Weekly');
         monthlyStats = await getStatsForDateRange(monthStart, monthEnd, 'Monthly');
@@ -291,9 +296,22 @@ router.get('/financial-stats',
       ]);
       
       // Get stats by office (comprehensive)
+      const officeMatchQuery = {};
+      
+      // Add date range filter if provided
+      if (startDate && endDate) {
+        officeMatchQuery.createdAt = {
+          $gte: new Date(startDate),
+          $lt: new Date(endDate)
+        };
+      }
+      
+      // Add other filters
+      if (employerId) officeMatchQuery.employerId = new mongoose.Types.ObjectId(employerId);
+      
       const officeStats = await Reservation.aggregate([
         // Apply filters at the beginning
-        ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
+        { $match: officeMatchQuery },
         {
           $lookup: {
             from: 'properties',
@@ -356,7 +374,19 @@ router.get('/financial-stats',
       ]);
       
       // Get stats by employer (comprehensive)
+      const employerMatchQuery = {};
+      
+      // Add date range filter if provided
+      if (startDate && endDate) {
+        employerMatchQuery.createdAt = {
+          $gte: new Date(startDate),
+          $lt: new Date(endDate)
+        };
+      }
+      
       const employerStats = await Reservation.aggregate([
+        // Apply date range filter at the beginning
+        ...(startDate && endDate ? [{ $match: employerMatchQuery }] : []),
         {
           $lookup: {
             from: 'properties',

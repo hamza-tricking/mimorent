@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const auth = require('../middlewares/auth.middleware');
 const { adminOnly } = require('../middlewares/role.middleware');
 const { sendSuccess, sendError } = require('../utils/response.util');
@@ -17,12 +18,6 @@ router.get('/stats',
     try {
       const { wilayaId, officeId, employerId } = req.query;
       
-      // Build base query
-      const baseQuery = {};
-      if (wilayaId) baseQuery.wilayaId = wilayaId;
-      if (officeId) baseQuery.officeId = officeId;
-      if (employerId) baseQuery.employerId = employerId;
-      
       // Get current date ranges
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -33,15 +28,29 @@ router.get('/stats',
       // Helper function to get stats for a date range
       const getStatsForDateRange = async (startDate, endDate) => {
         const matchQuery = {
-          ...baseQuery,
           createdAt: {
             $gte: startDate,
             $lt: endDate
           }
         };
         
+        // Add filters if provided
+        if (employerId) matchQuery.employerId = mongoose.Types.ObjectId(employerId);
+        
         const stats = await Reservation.aggregate([
           { $match: matchQuery },
+          {
+            $lookup: {
+              from: 'properties',
+              localField: 'propertyId',
+              foreignField: '_id',
+              as: 'property'
+            }
+          },
+          { $unwind: '$property' },
+          // Add property-based filters
+          ...(wilayaId ? [{ $match: { 'property.wilayaId': mongoose.Types.ObjectId(wilayaId) } }] : []),
+          ...(officeId ? [{ $match: { 'property.officeId': mongoose.Types.ObjectId(officeId) } }] : []),
           {
             $group: {
               _id: null,
@@ -68,11 +77,21 @@ router.get('/stats',
       
       // Get stats by wilaya
       const wilayaStats = await Reservation.aggregate([
-        { $match: baseQuery },
+        ...(employerId ? [{ $match: { employerId: mongoose.Types.ObjectId(employerId) } }] : []),
+        {
+          $lookup: {
+            from: 'properties',
+            localField: 'propertyId',
+            foreignField: '_id',
+            as: 'property'
+          }
+        },
+        { $unwind: '$property' },
+        ...(officeId ? [{ $match: { 'property.officeId': mongoose.Types.ObjectId(officeId) } }] : []),
         {
           $lookup: {
             from: 'wilayas',
-            localField: 'wilayaId',
+            localField: 'property.wilayaId',
             foreignField: '_id',
             as: 'wilaya'
           }
@@ -80,7 +99,7 @@ router.get('/stats',
         { $unwind: '$wilaya' },
         {
           $group: {
-            _id: '$wilayaId',
+            _id: '$property.wilayaId',
             wilayaName: { $first: '$wilaya.name' },
             totalRevenue: { $sum: '$totalPrice' },
             totalPaid: { $sum: '$paidAmount' },
@@ -93,11 +112,21 @@ router.get('/stats',
       
       // Get stats by office
       const officeStats = await Reservation.aggregate([
-        { $match: baseQuery },
+        ...(employerId ? [{ $match: { employerId: mongoose.Types.ObjectId(employerId) } }] : []),
+        ...(wilayaId ? [{ $match: { 'property.wilayaId': mongoose.Types.ObjectId(wilayaId) } }] : []),
+        {
+          $lookup: {
+            from: 'properties',
+            localField: 'propertyId',
+            foreignField: '_id',
+            as: 'property'
+          }
+        },
+        { $unwind: '$property' },
         {
           $lookup: {
             from: 'offices',
-            localField: 'officeId',
+            localField: 'property.officeId',
             foreignField: '_id',
             as: 'office'
           }
@@ -105,7 +134,7 @@ router.get('/stats',
         { $unwind: '$office' },
         {
           $group: {
-            _id: '$officeId',
+            _id: '$property.officeId',
             officeName: { $first: '$office.name' },
             totalRevenue: { $sum: '$totalPrice' },
             totalPaid: { $sum: '$paidAmount' },
@@ -118,7 +147,17 @@ router.get('/stats',
       
       // Get stats by employer
       const employerStats = await Reservation.aggregate([
-        { $match: baseQuery },
+        {
+          $lookup: {
+            from: 'properties',
+            localField: 'propertyId',
+            foreignField: '_id',
+            as: 'property'
+          }
+        },
+        { $unwind: '$property' },
+        ...(wilayaId ? [{ $match: { 'property.wilayaId': mongoose.Types.ObjectId(wilayaId) } }] : []),
+        ...(officeId ? [{ $match: { 'property.officeId': mongoose.Types.ObjectId(officeId) } }] : []),
         {
           $lookup: {
             from: 'users',

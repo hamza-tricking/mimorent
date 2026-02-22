@@ -207,6 +207,40 @@ router.post('/reservations',
         propertyTitle: property.title
       });
 
+      // Log history entry for reservation creation
+      try {
+        const History = mongoose.model('History');
+        await History.createReservationHistory({
+          action: 'reservation_created',
+          reservationId: reservation._id,
+          userId: req.user._id,
+          description: `تم إنشاء حجز جديد للعميل ${customerName} للعقار ${property.title}`,
+          metadata: {
+            customerName,
+            customerPhone,
+            startDate,
+            endDate,
+            totalPrice,
+            paidAmount,
+            remainingAmount,
+            paymentStatus: reservation.paymentStatus,
+            status: reservation.status,
+            propertyTitle: property.title,
+            propertyId: property._id,
+            propertyPricePerDay: property.pricePerDay,
+            employerId: employerId,
+            createdAt: reservation.createdAt,
+            reservationId: reservation._id
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+        console.log('🟢 BACKEND: History entry created for employer reservation');
+      } catch (historyError) {
+        console.error('Failed to create history entry:', historyError);
+        // Don't fail the request if history logging fails
+      }
+
       sendSuccess(res, 'Reservation created successfully', { reservation }, 201);
     } catch (error) {
       console.error('Reservation creation error:', error);

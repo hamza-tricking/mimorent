@@ -10,8 +10,8 @@ const User = require('../models/user.model');
 const Office = require('../models/office.model');
 const Wilaya = require('../models/wilaya.model');
 
-// GET /api/admin/financial/stats - Get financial statistics
-router.get('/stats',
+// GET /api/admin/financial-stats - Get financial statistics
+router.get('/financial-stats',
   auth,
   adminOnly,
   asyncHandler(async (req, res) => {

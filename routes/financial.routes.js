@@ -50,8 +50,7 @@ router.get('/financial-stats',
           startDate: {
             $gte: startDate,
             $lt: endDate
-          },
-          status: 'completed' // Only include completed reservations for revenue calculations
+          }
         };
         
         // Add filters if provided
@@ -59,7 +58,8 @@ router.get('/financial-stats',
         
         console.log(`🟢 ${rangeName} query:`, matchQuery);
         
-        const stats = await Reservation.aggregate([
+        // Get overall stats (all reservations)
+        const overallStats = await Reservation.aggregate([
           { $match: matchQuery },
           {
             $lookup: {
@@ -76,22 +76,105 @@ router.get('/financial-stats',
           {
             $group: {
               _id: null,
-              totalRevenue: { $sum: '$totalPrice' }, // Revenue from completed reservations only
+              totalRevenue: { $sum: '$totalPrice' },
               totalPaid: { $sum: '$paidAmount' },
               totalPending: { $sum: '$remainingAmount' },
-              reservationCount: { $sum: 1 } // Count of completed reservations only
+              reservationCount: { $sum: 1 }
             }
           }
         ]);
         
-        const result = stats[0] || {
+        // Get completed reservations stats (for actual revenue)
+        const completedMatchQuery = { ...matchQuery, status: 'completed' };
+        const completedStats = await Reservation.aggregate([
+          { $match: completedMatchQuery },
+          {
+            $lookup: {
+              from: 'properties',
+              localField: 'propertyId',
+              foreignField: '_id',
+              as: 'property'
+            }
+          },
+          { $unwind: '$property' },
+          // Add property-based filters
+          ...(wilayaId ? [{ $match: { 'property.wilayaId': new mongoose.Types.ObjectId(wilayaId) } }] : []),
+          ...(officeId ? [{ $match: { 'property.officeId': new mongoose.Types.ObjectId(officeId) } }] : []),
+          {
+            $group: {
+              _id: null,
+              completedRevenue: { $sum: '$totalPrice' },
+              completedPaid: { $sum: '$paidAmount' },
+              completedPending: { $sum: '$remainingAmount' },
+              completedCount: { $sum: 1 }
+            }
+          }
+        ]);
+        
+        // Get breakdown by status
+        const statusBreakdown = await Reservation.aggregate([
+          { $match: matchQuery },
+          {
+            $lookup: {
+              from: 'properties',
+              localField: 'propertyId',
+              foreignField: '_id',
+              as: 'property'
+            }
+          },
+          { $unwind: '$property' },
+          // Add property-based filters
+          ...(wilayaId ? [{ $match: { 'property.wilayaId': new mongoose.Types.ObjectId(wilayaId) } }] : []),
+          ...(officeId ? [{ $match: { 'property.officeId': new mongoose.Types.ObjectId(officeId) } }] : []),
+          {
+            $group: {
+              _id: '$status',
+              count: { $sum: 1 },
+              totalRevenue: { $sum: '$totalPrice' },
+              totalPaid: { $sum: '$paidAmount' }
+            }
+          }
+        ]);
+        
+        const overall = overallStats[0] || {
           totalRevenue: 0,
           totalPaid: 0,
           totalPending: 0,
           reservationCount: 0
         };
         
-        console.log(`🟢 ${rangeName} stats (completed only):`, result);
+        const completed = completedStats[0] || {
+          completedRevenue: 0,
+          completedPaid: 0,
+          completedPending: 0,
+          completedCount: 0
+        };
+        
+        // Format status breakdown
+        const statusStats = {
+          pending: { count: 0, revenue: 0, paid: 0 },
+          confirmed: { count: 0, revenue: 0, paid: 0 },
+          cancelled: { count: 0, revenue: 0, paid: 0 },
+          completed: { count: 0, revenue: 0, paid: 0 }
+        };
+        
+        statusBreakdown.forEach(item => {
+          if (statusStats[item._id]) {
+            statusStats[item._id] = {
+              count: item.count,
+              revenue: item.totalRevenue,
+              paid: item.totalPaid
+            };
+          }
+        });
+        
+        const result = {
+          ...overall,
+          ...completed,
+          statusBreakdown: statusStats
+        };
+        
+        console.log(`🟢 ${rangeName} comprehensive stats:`, result);
         return result;
       };
       
@@ -103,10 +186,9 @@ router.get('/financial-stats',
       // Get all time stats (no date filter)
       const allTimeStats = await getStatsForDateRange(new Date(0), new Date(), 'All Time');
       
-      // Get stats by wilaya
+      // Get stats by wilaya (comprehensive)
       const wilayaStats = await Reservation.aggregate([
-        // Apply status filter and other filters at the beginning
-        { $match: { status: 'completed' } }, // Only include completed reservations
+        // Apply filters at the beginning
         ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
         {
           $lookup: {
@@ -132,21 +214,46 @@ router.get('/financial-stats',
         { $unwind: '$wilaya' },
         {
           $group: {
-            _id: '$property.wilayaId',
+            _id: {
+              wilayaId: '$property.wilayaId',
+              status: '$status'
+            },
             wilayaName: { $first: '$wilaya.name' },
-            totalRevenue: { $sum: '$totalPrice' }, // Revenue from completed reservations only
+            count: { $sum: 1 },
+            totalRevenue: { $sum: '$totalPrice' },
             totalPaid: { $sum: '$paidAmount' },
-            totalPending: { $sum: '$remainingAmount' },
-            reservationCount: { $sum: 1 } // Count of completed reservations only
+            completedRevenue: {
+              $sum: {
+                $cond: [{ $eq: ['$status', 'completed'] }, '$totalPrice', 0]
+              }
+            }
           }
         },
-        { $sort: { totalRevenue: -1 } }
+        {
+          $group: {
+            _id: '$_id.wilayaId',
+            wilayaName: { $first: '$wilayaName' },
+            totalRevenue: { $sum: '$totalRevenue' },
+            totalPaid: { $sum: '$totalPaid' },
+            totalPending: { $sum: { $subtract: ['$totalRevenue', '$totalPaid'] } },
+            reservationCount: { $sum: '$count' },
+            completedRevenue: { $sum: '$completedRevenue' },
+            statusBreakdown: {
+              $push: {
+                status: '$_id.status',
+                count: '$count',
+                revenue: '$totalRevenue',
+                paid: '$totalPaid'
+              }
+            }
+          }
+        },
+        { $sort: { completedRevenue: -1 } }
       ]);
       
-      // Get stats by office
+      // Get stats by office (comprehensive)
       const officeStats = await Reservation.aggregate([
-        // Apply status filter and other filters at the beginning
-        { $match: { status: 'completed' } }, // Only include completed reservations
+        // Apply filters at the beginning
         ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
         {
           $lookup: {
@@ -172,21 +279,45 @@ router.get('/financial-stats',
         { $unwind: '$office' },
         {
           $group: {
-            _id: '$property.officeId',
+            _id: {
+              officeId: '$property.officeId',
+              status: '$status'
+            },
             officeName: { $first: '$office.name' },
-            totalRevenue: { $sum: '$totalPrice' }, // Revenue from completed reservations only
+            count: { $sum: 1 },
+            totalRevenue: { $sum: '$totalPrice' },
             totalPaid: { $sum: '$paidAmount' },
-            totalPending: { $sum: '$remainingAmount' },
-            reservationCount: { $sum: 1 } // Count of completed reservations only
+            completedRevenue: {
+              $sum: {
+                $cond: [{ $eq: ['$status', 'completed'] }, '$totalPrice', 0]
+              }
+            }
           }
         },
-        { $sort: { totalRevenue: -1 } }
+        {
+          $group: {
+            _id: '$_id.officeId',
+            officeName: { $first: '$officeName' },
+            totalRevenue: { $sum: '$totalRevenue' },
+            totalPaid: { $sum: '$totalPaid' },
+            totalPending: { $sum: { $subtract: ['$totalRevenue', '$totalPaid'] } },
+            reservationCount: { $sum: '$count' },
+            completedRevenue: { $sum: '$completedRevenue' },
+            statusBreakdown: {
+              $push: {
+                status: '$_id.status',
+                count: '$count',
+                revenue: '$totalRevenue',
+                paid: '$totalPaid'
+              }
+            }
+          }
+        },
+        { $sort: { completedRevenue: -1 } }
       ]);
       
-      // Get stats by employer
+      // Get stats by employer (comprehensive)
       const employerStats = await Reservation.aggregate([
-        // Apply status filter and other filters at the beginning
-        { $match: { status: 'completed' } }, // Only include completed reservations
         {
           $lookup: {
             from: 'properties',
@@ -202,33 +333,60 @@ router.get('/financial-stats',
         // If employerId is provided, only return that specific employer
         ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
         {
+          $group: {
+            _id: {
+              employerId: '$employerId',
+              status: '$status'
+            },
+            count: { $sum: 1 },
+            totalRevenue: { $sum: '$totalPrice' },
+            totalPaid: { $sum: '$paidAmount' },
+            completedRevenue: {
+              $sum: {
+                $cond: [{ $eq: ['$status', 'completed'] }, '$totalPrice', 0]
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: '$_id.employerId',
+            totalRevenue: { $sum: '$totalRevenue' },
+            totalPaid: { $sum: '$totalPaid' },
+            totalPending: { $sum: { $subtract: ['$totalRevenue', '$totalPaid'] } },
+            reservationCount: { $sum: '$count' },
+            completedRevenue: { $sum: '$completedRevenue' },
+            statusBreakdown: {
+              $push: {
+                status: '$_id.status',
+                count: '$count',
+                revenue: '$totalRevenue',
+                paid: '$totalPaid'
+              }
+            }
+          }
+        },
+        {
           $lookup: {
             from: 'users',
-            localField: 'employerId',
+            localField: '_id',
             foreignField: '_id',
             as: 'employer'
           }
         },
         { $unwind: { path: '$employer', preserveNullAndEmptyArrays: true } },
         {
-          $group: {
-            _id: '$employerId',
+          $addFields: {
             employerName: { 
-              $first: { 
-                $cond: {
-                  if: { $ne: ['$employer', null] },
-                  then: { $concat: ['$employer.firstName', ' ', '$employer.lastName'] },
-                  else: 'Unknown Employer'
-                }
+              $cond: {
+                if: { $ne: ['$employer', null] },
+                then: { $concat: ['$employer.firstName', ' ', '$employer.lastName'] },
+                else: 'Unknown Employer'
               }
-            },
-            totalRevenue: { $sum: '$totalPrice' }, // Revenue from completed reservations only
-            totalPaid: { $sum: '$paidAmount' },
-            totalPending: { $sum: '$remainingAmount' },
-            reservationCount: { $sum: 1 } // Count of completed reservations only
+            }
           }
         },
-        { $sort: { totalRevenue: -1 } }
+        { $sort: { completedRevenue: -1 } }
       ]);
       
       const responseData = {

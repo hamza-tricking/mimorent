@@ -194,6 +194,19 @@ router.post('/reservations',
 
       await reservation.save();
 
+      // Update property to mark as reserved
+      await Property.findByIdAndUpdate(
+        propertyId,
+        { isReserved: true },
+        { new: true }
+      );
+
+      console.log('🟢 BACKEND: Reservation created and property marked as reserved:', {
+        reservationId: reservation._id,
+        propertyId: propertyId,
+        propertyTitle: property.title
+      });
+
       sendSuccess(res, 'Reservation created successfully', { reservation }, 201);
     } catch (error) {
       console.error('Reservation creation error:', error);

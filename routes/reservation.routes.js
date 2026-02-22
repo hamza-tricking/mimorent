@@ -141,6 +141,19 @@ router.post('/',
 
       await reservation.save();
 
+      // Update property to mark as reserved
+      await Property.findByIdAndUpdate(
+        propertyId,
+        { isReserved: true },
+        { new: true }
+      );
+
+      console.log('🟢 BACKEND: Admin reservation created and property marked as reserved:', {
+        reservationId: reservation._id,
+        propertyId: propertyId,
+        propertyTitle: property.title
+      });
+
       // Log history entry for reservation creation
       try {
         await History.createReservationHistory({

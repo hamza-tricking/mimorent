@@ -145,7 +145,8 @@ router.get('/financial-stats',
       
       // Get stats by office
       const officeStats = await Reservation.aggregate([
-        // Apply filters at the beginning
+        // Apply status filter and other filters at the beginning
+        { $match: { status: 'completed' } }, // Only include completed reservations
         ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
         {
           $lookup: {
@@ -173,10 +174,10 @@ router.get('/financial-stats',
           $group: {
             _id: '$property.officeId',
             officeName: { $first: '$office.name' },
-            totalRevenue: { $sum: '$totalPrice' },
+            totalRevenue: { $sum: '$totalPrice' }, // Revenue from completed reservations only
             totalPaid: { $sum: '$paidAmount' },
             totalPending: { $sum: '$remainingAmount' },
-            reservationCount: { $sum: 1 }
+            reservationCount: { $sum: 1 } // Count of completed reservations only
           }
         },
         { $sort: { totalRevenue: -1 } }
@@ -184,6 +185,8 @@ router.get('/financial-stats',
       
       // Get stats by employer
       const employerStats = await Reservation.aggregate([
+        // Apply status filter and other filters at the beginning
+        { $match: { status: 'completed' } }, // Only include completed reservations
         {
           $lookup: {
             from: 'properties',
@@ -219,10 +222,10 @@ router.get('/financial-stats',
                 }
               }
             },
-            totalRevenue: { $sum: '$totalPrice' },
+            totalRevenue: { $sum: '$totalPrice' }, // Revenue from completed reservations only
             totalPaid: { $sum: '$paidAmount' },
             totalPending: { $sum: '$remainingAmount' },
-            reservationCount: { $sum: 1 }
+            reservationCount: { $sum: 1 } // Count of completed reservations only
           }
         },
         { $sort: { totalRevenue: -1 } }

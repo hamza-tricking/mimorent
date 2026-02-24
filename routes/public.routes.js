@@ -17,7 +17,7 @@ const createOrderValidation = [
   body('phoneNumber')
     .notEmpty().withMessage('Phone number is required')
     .isLength({ max: 20 }).withMessage('Phone number cannot exceed 20 characters')
-    .matches(/^(0[5-7]\d{8}|\+213[5-7]\d{8})$/).withMessage('Phone number must be a valid Algerian number (e.g., 0XXXXXXXXX or +213XXXXXXXXX)')
+    .matches(/^(0[5-7]\d{8}|[5-7]\d{7}|\+213[5-7]\d{8})$/).withMessage('Phone number must be a valid Algerian number (e.g., 05XXXXXXXX, 5XXXXXXXX, or +2135XXXXXXXX)')
     .trim(),
   body('propertyId')
     .notEmpty().withMessage('Property ID is required')

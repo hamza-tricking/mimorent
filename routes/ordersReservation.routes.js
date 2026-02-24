@@ -320,6 +320,52 @@ router.put('/:id/process', auth, adminOnly, asyncHandler(async (req, res) => {
   }
 }));
 
+// PUT /api/admin/orders-reservation/:id - Update order priority and admin notes
+router.put('/:id', auth, adminOnly, orderActionValidation, asyncHandler(async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return sendError(res, 'Validation failed', 400, errors.array());
+    }
+
+    const { priority, adminNotes } = req.body;
+
+    const order = await OrdersReservation.findById(req.params.id);
+    if (!order) {
+      return sendError(res, 'Order not found', 404);
+    }
+
+    // Update fields
+    if (priority) order.priority = priority;
+    if (adminNotes !== undefined) order.adminNotes = adminNotes;
+
+    await order.save();
+
+    // Populate references for response
+    await order.populate('propertyId', 'title location pricePerDay images');
+    await order.populate('wilayaId', 'name');
+
+    // Create history entry
+    try {
+      const History = require('../models/history.model');
+      await History.create({
+        action: 'update_order',
+        targetId: order._id,
+        targetModel: 'OrdersReservation',
+        details: `Updated order for ${order.fullname} - Priority: ${priority}, Admin Notes: ${adminNotes || 'None'}`,
+        userId: req.user.id
+      });
+    } catch (historyError) {
+      console.error('Failed to create history entry:', historyError);
+    }
+
+    sendSuccess(res, 'Order updated successfully', { order });
+  } catch (error) {
+    console.error('Update order error:', error);
+    sendError(res, 'Failed to update order', 500);
+  }
+}));
+
 // DELETE /api/admin/orders-reservation/:id - Delete order
 router.delete('/:id', auth, adminOnly, asyncHandler(async (req, res) => {
   try {

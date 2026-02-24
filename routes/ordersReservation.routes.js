@@ -182,11 +182,8 @@ router.put('/:id/approve', auth, adminOnly, orderActionValidation, asyncHandler(
       return sendError(res, 'Order not found', 404);
     }
 
-    if (order.status !== 'pending') {
-      return sendError(res, 'Only pending orders can be approved', 400);
-    }
-
-    // Update order status
+    // Allow status change from any status to approved
+    const previousStatus = order.status;
     order.status = 'approved';
     if (adminNotes) order.adminNotes = adminNotes;
     await order.save();
@@ -217,11 +214,8 @@ router.put('/:id/reject', auth, adminOnly, orderActionValidation, asyncHandler(a
       return sendError(res, 'Order not found', 404);
     }
 
-    if (order.status !== 'pending') {
-      return sendError(res, 'Only pending orders can be rejected', 400);
-    }
-
-    // Update order status
+    // Allow status change from any status to rejected
+    const previousStatus = order.status;
     order.status = 'rejected';
     if (adminNotes) order.adminNotes = adminNotes;
     await order.save();

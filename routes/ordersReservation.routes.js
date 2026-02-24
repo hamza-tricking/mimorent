@@ -157,20 +157,6 @@ router.post('/', auth, adminOnly, createOrderValidation, asyncHandler(async (req
     await order.populate('propertyId', 'title location pricePerDay images');
     await order.populate('wilayaId', 'name');
 
-    // Create history entry
-    try {
-      const History = require('../models/history.model');
-      await History.create({
-        action: 'create_order',
-        targetId: order._id,
-        targetModel: 'OrdersReservation',
-        details: `Created order for ${fullname} - Property: ${property.title}`,
-        userId: req.user.id
-      });
-    } catch (historyError) {
-      console.error('Failed to create history entry:', historyError);
-    }
-
     sendSuccess(res, 'Order created successfully', { order }, 201);
   } catch (error) {
     console.error('Create order error:', error);
@@ -209,20 +195,6 @@ router.put('/:id/approve', auth, adminOnly, orderActionValidation, asyncHandler(
     await order.populate('propertyId', 'title location pricePerDay images');
     await order.populate('wilayaId', 'name');
 
-    // Create history entry
-    try {
-      const History = require('../models/history.model');
-      await History.create({
-        action: 'approve_order',
-        targetId: order._id,
-        targetModel: 'OrdersReservation',
-        details: `Approved order for ${order.fullname} - Property: ${order.propertyId.title}`,
-        userId: req.user.id
-      });
-    } catch (historyError) {
-      console.error('Failed to create history entry:', historyError);
-    }
-
     sendSuccess(res, 'Order approved successfully', { order });
   } catch (error) {
     console.error('Approve order error:', error);
@@ -258,20 +230,6 @@ router.put('/:id/reject', auth, adminOnly, orderActionValidation, asyncHandler(a
     await order.populate('propertyId', 'title location pricePerDay images');
     await order.populate('wilayaId', 'name');
 
-    // Create history entry
-    try {
-      const History = require('../models/history.model');
-      await History.create({
-        action: 'reject_order',
-        targetId: order._id,
-        targetModel: 'OrdersReservation',
-        details: `Rejected order for ${order.fullname} - Property: ${order.propertyId.title}`,
-        userId: req.user.id
-      });
-    } catch (historyError) {
-      console.error('Failed to create history entry:', historyError);
-    }
-
     sendSuccess(res, 'Order rejected successfully', { order });
   } catch (error) {
     console.error('Reject order error:', error);
@@ -298,20 +256,6 @@ router.put('/:id/process', auth, adminOnly, asyncHandler(async (req, res) => {
     // Populate references for response
     await order.populate('propertyId', 'title location pricePerDay images');
     await order.populate('wilayaId', 'name');
-
-    // Create history entry
-    try {
-      const History = require('../models/history.model');
-      await History.create({
-        action: 'process_order',
-        targetId: order._id,
-        targetModel: 'OrdersReservation',
-        details: `Started processing order for ${order.fullname} - Property: ${order.propertyId.title}`,
-        userId: req.user.id
-      });
-    } catch (historyError) {
-      console.error('Failed to create history entry:', historyError);
-    }
 
     sendSuccess(res, 'Order marked as processing successfully', { order });
   } catch (error) {
@@ -345,20 +289,6 @@ router.put('/:id', auth, adminOnly, orderActionValidation, asyncHandler(async (r
     await order.populate('propertyId', 'title location pricePerDay images');
     await order.populate('wilayaId', 'name');
 
-    // Create history entry
-    try {
-      const History = require('../models/history.model');
-      await History.create({
-        action: 'update_order',
-        targetId: order._id,
-        targetModel: 'OrdersReservation',
-        details: `Updated order for ${order.fullname} - Priority: ${priority}, Admin Notes: ${adminNotes || 'None'}`,
-        userId: req.user.id
-      });
-    } catch (historyError) {
-      console.error('Failed to create history entry:', historyError);
-    }
-
     sendSuccess(res, 'Order updated successfully', { order });
   } catch (error) {
     console.error('Update order error:', error);
@@ -375,20 +305,6 @@ router.delete('/:id', auth, adminOnly, asyncHandler(async (req, res) => {
     }
 
     await OrdersReservation.findByIdAndDelete(req.params.id);
-
-    // Create history entry
-    try {
-      const History = require('../models/history.model');
-      await History.create({
-        action: 'delete_order',
-        targetId: order._id,
-        targetModel: 'OrdersReservation',
-        details: `Deleted order for ${order.fullname} - Property: ${order.propertyId.title}`,
-        userId: req.user.id
-      });
-    } catch (historyError) {
-      console.error('Failed to create history entry:', historyError);
-    }
 
     sendSuccess(res, null, 'Order deleted successfully');
   } catch (error) {

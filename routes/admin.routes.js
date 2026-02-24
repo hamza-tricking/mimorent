@@ -11,6 +11,7 @@ const Office = require('../models/office.model');
 const Wilaya = require('../models/wilaya.model');
 const Reservation = require('../models/reservation.model');
 const History = require('../models/history.model');
+const OrdersReservation = require('../models/ordersReservation.model');
 const { body, validationResult } = require('express-validator');
 
 // Import route modules
@@ -18,12 +19,14 @@ const wilayaRoutes = require('./wilaya.routes');
 const officeRoutes = require('./office.routes');
 const propertyRoutes = require('./property.routes');
 const reservationRoutes = require('./reservation.routes');
+const ordersReservationRoutes = require('./ordersReservation.routes');
 
 // Mount route modules
 router.use('/wilayas', wilayaRoutes);
 router.use('/offices', officeRoutes);
 router.use('/properties', propertyRoutes);
 router.use('/reservations', reservationRoutes);
+router.use('/orders-reservation', ordersReservationRoutes);
 
 // Validation rules for user creation
 const createUserValidation = [

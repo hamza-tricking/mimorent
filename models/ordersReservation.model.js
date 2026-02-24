@@ -21,23 +21,7 @@ const ordersReservationSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Phone number is required'],
     trim: true,
-    validate: {
-      validator: function(v) {
-        // Algerian phone number validation - very flexible
-        const cleanNumber = v.replace(/[\s\-\(\)]+/g, '');
-        
-        // Accept various Algerian formats:
-        // 9 digits: 05XXXXXXXX, 06XXXXXXXX, 07XXXXXXXX
-        // 8 digits: 5XXXXXXXX (without leading 0)
-        // 7 digits: 55XXXXX or 05XXXXX (shorter format)
-        // 6 digits: 55XXXX or 05XXXX (very short)
-        // 5 digits: 55XXX or 05XXX (very short format)
-        // 12 digits: +2135XXXXXXXX (with country code)
-        
-        return /^(0[5-7]\d{8}|[5-7]\d{7}|0[5-7]\d{6}|[5-7]\d{6}|0[5-7]\d{5}|[5-7]\d{5}|\+213[5-7]\d{8})$/.test(cleanNumber);
-      },
-      message: 'Phone number must be a valid Algerian number (e.g., 05XXXXXXXX, 05XXXXX, or +2135XXXXXXXX)'
-    }
+    maxlength: [20, 'Phone number cannot exceed 20 characters']
   },
   
   // Property reference

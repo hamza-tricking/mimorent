@@ -107,10 +107,7 @@ ordersReservationSchema.pre('save', function(next) {
     return next(new Error('End date must be after start date'));
   }
   
-  // Validate that start date is not in the past for new orders
-  if (this.isNew && startDate < new Date()) {
-    return next(new Error('Start date cannot be in the past'));
-  }
+  // Date validation removed to allow more flexibility
   
   next();
 });

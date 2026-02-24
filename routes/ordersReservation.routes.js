@@ -74,14 +74,14 @@ router.get('/', auth, adminOnly, asyncHandler(async (req, res) => {
 
     const total = await OrdersReservation.countDocuments(filter);
 
-    sendSuccess(res, {
+    sendSuccess(res, 'Orders retrieved successfully', {
       orders,
       pagination: {
         current: page,
         pages: Math.ceil(total / limit),
         total
       }
-    }, 'Orders retrieved successfully');
+    });
   } catch (error) {
     console.error('Get orders error:', error);
     sendError(res, 'Failed to retrieve orders', 500);
@@ -99,7 +99,7 @@ router.get('/:id', auth, adminOnly, asyncHandler(async (req, res) => {
       return sendError(res, 'Order not found', 404);
     }
 
-    sendSuccess(res, { order }, 'Order retrieved successfully');
+    sendSuccess(res, 'Order retrieved successfully', { order });
   } catch (error) {
     console.error('Get order error:', error);
     sendError(res, 'Failed to retrieve order', 500);
@@ -171,7 +171,7 @@ router.post('/', auth, adminOnly, createOrderValidation, asyncHandler(async (req
       console.error('Failed to create history entry:', historyError);
     }
 
-    sendSuccess(res, { order }, 'Order created successfully', 201);
+    sendSuccess(res, 'Order created successfully', { order }, 201);
   } catch (error) {
     console.error('Create order error:', error);
     if (error.name === 'ValidationError') {
@@ -223,7 +223,7 @@ router.put('/:id/approve', auth, adminOnly, orderActionValidation, asyncHandler(
       console.error('Failed to create history entry:', historyError);
     }
 
-    sendSuccess(res, { order }, 'Order approved successfully');
+    sendSuccess(res, 'Order approved successfully', { order });
   } catch (error) {
     console.error('Approve order error:', error);
     sendError(res, 'Failed to approve order', 500);
@@ -272,7 +272,7 @@ router.put('/:id/reject', auth, adminOnly, orderActionValidation, asyncHandler(a
       console.error('Failed to create history entry:', historyError);
     }
 
-    sendSuccess(res, { order }, 'Order rejected successfully');
+    sendSuccess(res, 'Order rejected successfully', { order });
   } catch (error) {
     console.error('Reject order error:', error);
     sendError(res, 'Failed to reject order', 500);
@@ -313,7 +313,7 @@ router.put('/:id/process', auth, adminOnly, asyncHandler(async (req, res) => {
       console.error('Failed to create history entry:', historyError);
     }
 
-    sendSuccess(res, { order }, 'Order marked as processing successfully');
+    sendSuccess(res, 'Order marked as processing successfully', { order });
   } catch (error) {
     console.error('Process order error:', error);
     sendError(res, 'Failed to process order', 500);

@@ -46,8 +46,11 @@ const createOrderValidation = [
 // POST /api/orders-reservation - Create new order (public endpoint)
 router.post('/orders-reservation', createOrderValidation, asyncHandler(async (req, res) => {
   try {
+    console.log('🔍 Order creation request received:', req.body);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('🔴 Validation errors:', errors.array());
       return sendError(res, 'Validation failed', 400, errors.array());
     }
 
@@ -63,17 +66,33 @@ router.post('/orders-reservation', createOrderValidation, asyncHandler(async (re
       notes
     } = req.body;
 
+    console.log('🔍 Parsed order data:', {
+      fullname,
+      phoneNumber,
+      propertyId,
+      wilayaId,
+      startDate,
+      endDate,
+      orderType,
+      priority,
+      notes
+    });
+
     // Validate that property exists
     const property = await Property.findById(propertyId);
     if (!property) {
+      console.log('🔴 Property not found:', propertyId);
       return sendError(res, 'Property not found', 404);
     }
 
     // Validate that wilaya exists
     const wilaya = await Wilaya.findById(wilayaId);
     if (!wilaya) {
+      console.log('🔴 Wilaya not found:', wilayaId);
       return sendError(res, 'Wilaya not found', 404);
     }
+
+    console.log('✅ Property and Wilaya validated');
 
     // Create order
     const order = new OrdersReservation({
@@ -88,18 +107,26 @@ router.post('/orders-reservation', createOrderValidation, asyncHandler(async (re
       notes
     });
 
+    console.log('🔍 Created order object:', order);
+
     await order.save();
+    console.log('✅ Order saved to database');
 
     // Populate references for response
     await order.populate('propertyId', 'title location pricePerDay images');
     await order.populate('wilayaId', 'name');
 
+    console.log('✅ Order populated with references');
+
     sendSuccess(res, 'Order created successfully', { order }, 201);
+    console.log('✅ Order creation response sent');
   } catch (error) {
-    console.error('Create order error:', error);
+    console.error('🔴 Create order error:', error);
     if (error.name === 'ValidationError') {
+      console.log('🔴 Mongoose validation error:', error.message);
       return sendError(res, error.message, 400);
     }
+    console.log('🔴 General error:', error);
     sendError(res, 'Failed to create order', 500);
   }
 }));

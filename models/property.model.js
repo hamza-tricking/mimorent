@@ -68,6 +68,15 @@ const propertySchema = new mongoose.Schema({
       message: 'Image must be a valid URL, base64 data URL, or file path with supported image extension'
     }
   }],
+  propertyType: {
+    type: String,
+    required: [true, 'Property type is required'],
+    enum: {
+      values: ['home', 'villa', 'shop'],
+      message: 'Property type must be home, villa, or shop'
+    },
+    default: 'home'
+  },
   wilayaId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Wilaya',

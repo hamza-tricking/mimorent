@@ -19,6 +19,9 @@ const createPropertyValidation = [
     .notEmpty().withMessage('Description is required')
     .isLength({ max: 2000 }).withMessage('Description cannot exceed 2000 characters')
     .trim(),
+  body('propertyType')
+    .notEmpty().withMessage('Property type is required')
+    .isIn(['home', 'villa', 'shop']).withMessage('Property type must be home, villa, or shop'),
   body('pricePerDay')
     .notEmpty().withMessage('Price per day is required')
     .isNumeric().withMessage('Price per day must be a number')
@@ -59,6 +62,9 @@ const updatePropertyValidation = [
     .optional()
     .isLength({ max: 2000 }).withMessage('Description cannot exceed 2000 characters')
     .trim(),
+  body('propertyType')
+    .optional()
+    .isIn(['home', 'villa', 'shop']).withMessage('Property type must be home, villa, or shop'),
   body('pricePerDay')
     .optional()
     .isNumeric().withMessage('Price per day must be a number')
@@ -89,7 +95,7 @@ router.post('/',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, pricePerDay, wilayaId, officeId, images, available } = req.body;
+      const { title, description, propertyType, pricePerDay, wilayaId, officeId, images, available } = req.body;
 
       // Check if wilaya exists
       const wilaya = await Wilaya.findById(wilayaId);
@@ -111,6 +117,7 @@ router.post('/',
       const property = new Property({ 
         title, 
         description, 
+        propertyType,
         pricePerDay, 
         wilayaId, 
         officeId,
@@ -228,7 +235,7 @@ router.put('/:id',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, pricePerDay, wilayaId, officeId, images, available, isReserved } = req.body;
+      const { title, description, propertyType, pricePerDay, wilayaId, officeId, images, available, isReserved } = req.body;
       const propertyId = req.params.id;
 
       // Check if property exists
@@ -278,6 +285,7 @@ router.put('/:id',
       const updateData = {};
       if (title) updateData.title = title;
       if (description) updateData.description = description;
+      if (propertyType) updateData.propertyType = propertyType;
       if (pricePerDay) updateData.pricePerDay = pricePerDay;
       if (images) updateData.images = images;
       if (available !== undefined) updateData.available = available;

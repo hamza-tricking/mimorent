@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Reminder = require('../models/reminder.model');
-const auth = require('../middleware/auth.middleware');
+const auth = require('../middlewares/auth.middleware');
 
 // Get reminders for specific reservation
 router.get('/admin/reminders/reservation/:reservationId', auth, async (req, res) => {

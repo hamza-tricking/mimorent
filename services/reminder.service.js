@@ -100,11 +100,11 @@ class ReminderService {
       message: reminder.message,
       reservationId: reminder.reservationId._id,
       propertyId: reminder.propertyId._id,
-      userId: reminder.createdBy._id,
+      userId: reminder.reservationId.createdBy || 'system', // Use reservation creator or system
       metadata: {
         reminderId: reminder._id,
-        customerName: reminder.metadata.customerName,
-        propertyTitle: reminder.metadata.propertyTitle,
+        customerName: reminder.reservationId.customerName,
+        propertyTitle: reminder.propertyId.title,
         reminderType: reminder.reminderType,
         reminderDateTime: reminder.calculatedReminderDate
       },

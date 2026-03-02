@@ -4,7 +4,7 @@ const Reminder = require('../models/reminder.model');
 const auth = require('../middlewares/auth.middleware');
 
 // Get reminders for specific reservation
-router.get('/admin/reminders/reservation/:reservationId', auth, async (req, res) => {
+router.get('/reminders/reservation/:reservationId', auth, async (req, res) => {
   try {
     const { reservationId } = req.params;
     
@@ -27,7 +27,7 @@ router.get('/admin/reminders/reservation/:reservationId', auth, async (req, res)
 });
 
 // Create new reminder
-router.post('/admin/reminders', auth, async (req, res) => {
+router.post('/reminders', auth, async (req, res) => {
   try {
     const {
       reservationId,
@@ -89,7 +89,7 @@ router.post('/admin/reminders', auth, async (req, res) => {
 });
 
 // Delete reminder
-router.delete('/admin/reminders/:reminderId', auth, async (req, res) => {
+router.delete('/reminders/:reminderId', auth, async (req, res) => {
   try {
     const { reminderId } = req.params;
     
@@ -126,7 +126,7 @@ router.delete('/admin/reminders/:reminderId', auth, async (req, res) => {
 });
 
 // Get due reminders (for cron job)
-router.get('/admin/reminders/due', auth, async (req, res) => {
+router.get('/reminders/due', auth, async (req, res) => {
   try {
     const dueReminders = await Reminder.findDueReminders();
     
@@ -145,7 +145,7 @@ router.get('/admin/reminders/due', auth, async (req, res) => {
 });
 
 // Mark reminder as sent
-router.put('/admin/reminders/:reminderId/sent', auth, async (req, res) => {
+router.put('/reminders/:reminderId/sent', auth, async (req, res) => {
   try {
     const { reminderId } = req.params;
     

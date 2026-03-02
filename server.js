@@ -34,7 +34,20 @@ const limiter = rateLimit({
   legacyHeaders: false
 });
 
+// More lenient rate limit for admin routes
+const adminLimiter = rateLimit({
+  windowMs: 60000, // 1 minute
+  max: 300, // 300 requests per minute
+  message: {
+    success: false,
+    message: 'Too many admin requests, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 app.use('/api/', limiter);
+app.use('/api/admin', adminLimiter);
 
 if (nodeEnv === 'development') {
   app.use(morgan('dev'));

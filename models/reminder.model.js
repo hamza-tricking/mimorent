@@ -147,8 +147,10 @@ reminderSchema.statics.createForReservation = async function(reservationId, remi
 
 // Static method to find due reminders
 reminderSchema.statics.findDueReminders = async function() {
+  // Use Africa/Algiers timezone to match reminder storage
   const now = new Date();
-  console.log('🔍 Finding due reminders at:', now.toISOString());
+  const algiersTime = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Algiers" }));
+  console.log('🔍 Finding due reminders at:', algiersTime.toISOString());
   
   // First, let's see all reminders for debugging
   const allReminders = await this.find({}).populate('reservationId propertyId');
@@ -160,7 +162,7 @@ reminderSchema.statics.findDueReminders = async function() {
   // Find reminders with specific time that are due
   const specificTimeReminders = await this.find({
     reminderType: 'specific_time',
-    reminderDateTime: { $lte: now },
+    reminderDateTime: { $lte: algiersTime },
     status: 'pending'
   }).populate('reservationId propertyId');
   
@@ -186,12 +188,12 @@ reminderSchema.statics.findDueReminders = async function() {
     
     const endDate = new Date(reminder.reservationId.endDate);
     const reminderDate = new Date(endDate.getTime() - (reminder.daysBeforeEnd * 24 * 60 * 60 * 1000));
-    // Set to 9:00 AM UTC for consistency with modal display
+    // Set to 9:00 AM Africa/Algiers for consistency
     reminderDate.setHours(9, 0, 0, 0);
     
-    console.log(`  - Checking ${reminder._id}: end=${endDate.toISOString()}, reminder=${reminderDate.toISOString()}, now=${now.toISOString()}, due=${now >= reminderDate}`);
+    console.log(`  - Checking ${reminder._id}: end=${endDate.toISOString()}, reminder=${reminderDate.toISOString()}, now=${algiersTime.toISOString()}, due=${algiersTime >= reminderDate}`);
     
-    return now >= reminderDate;
+    return algiersTime >= reminderDate;
   });
   
   console.log('📋 Due before end reminders:', dueBeforeEndReminders.length);

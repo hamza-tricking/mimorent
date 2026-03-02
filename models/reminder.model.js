@@ -67,7 +67,10 @@ reminderSchema.virtual('calculatedReminderDate').get(function() {
   
   if (this.reminderType === 'before_end' && this.reservationId && this.reservationId.endDate) {
     const endDate = new Date(this.reservationId.endDate);
-    return new Date(endDate.getTime() - (this.daysBeforeEnd * 24 * 60 * 60 * 1000));
+    const reminderDate = new Date(endDate.getTime() - (this.daysBeforeEnd * 24 * 60 * 60 * 1000));
+    // Set to 9:00 AM UTC for consistency with modal display
+    reminderDate.setHours(9, 0, 0, 0);
+    return reminderDate;
   }
   
   return null;
@@ -147,6 +150,13 @@ reminderSchema.statics.findDueReminders = async function() {
   const now = new Date();
   console.log('🔍 Finding due reminders at:', now.toISOString());
   
+  // First, let's see all reminders for debugging
+  const allReminders = await this.find({}).populate('reservationId propertyId');
+  console.log('📋 All reminders in database:', allReminders.length);
+  allReminders.forEach(r => {
+    console.log(`  - ${r._id}: ${r.reminderType} - ${r.status} - ${r.reminderDateTime}`);
+  });
+  
   // Find reminders with specific time that are due
   const specificTimeReminders = await this.find({
     reminderType: 'specific_time',
@@ -166,6 +176,9 @@ reminderSchema.statics.findDueReminders = async function() {
   }).populate('reservationId propertyId');
   
   console.log('📋 Found before end reminders:', beforeEndReminders.length);
+  beforeEndReminders.forEach(r => {
+    console.log(`  - ${r._id}: ${r.daysBeforeEnd} days before end (${r.reminderType})`);
+  });
   
   // Filter before end reminders to only include those that are actually due
   const dueBeforeEndReminders = beforeEndReminders.filter(reminder => {
@@ -173,6 +186,10 @@ reminderSchema.statics.findDueReminders = async function() {
     
     const endDate = new Date(reminder.reservationId.endDate);
     const reminderDate = new Date(endDate.getTime() - (reminder.daysBeforeEnd * 24 * 60 * 60 * 1000));
+    // Set to 9:00 AM UTC for consistency with modal display
+    reminderDate.setHours(9, 0, 0, 0);
+    
+    console.log(`  - Checking ${reminder._id}: end=${endDate.toISOString()}, reminder=${reminderDate.toISOString()}, now=${now.toISOString()}, due=${now >= reminderDate}`);
     
     return now >= reminderDate;
   });

@@ -50,7 +50,7 @@ class ReminderJob {
       }
     }, {
       scheduled: true,
-      timezone: 'Africa/Algiers' // Set to your timezone
+      timezone: 'UTC' // Use UTC to match reminder storage
     });
     
     this.isRunning = true;

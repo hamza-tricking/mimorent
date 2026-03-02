@@ -29,7 +29,8 @@
     "joi": "^17.9.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.5.0",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "jest": "^29.6.2",

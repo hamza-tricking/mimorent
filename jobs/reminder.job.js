@@ -19,8 +19,8 @@ class ReminderJob {
     // Schedule to run every 1 minute for testing
     this.job = cron.schedule('* * * * *', async () => {
       if (this.isRunning) {
-        console.log('⏳ Previous reminder job still running, skipping...');
-        return;
+        console.log('⏳ Previous reminder job still running, forcing reset...');
+        this.isRunning = false; // Force reset if stuck
       }
       
       this.isRunning = true;
@@ -28,7 +28,15 @@ class ReminderJob {
       try {
         console.log('⏰ Running reminder job at:', new Date().toISOString());
         
-        const result = await ReminderService.processDueReminders();
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Job timeout')), 30000); // 30 seconds timeout
+        });
+        
+        const result = await Promise.race([
+          ReminderService.processDueReminders(),
+          timeoutPromise
+        ]);
         
         if (result.success) {
           console.log(`✅ Reminder job completed: ${result.processed}/${result.total} reminders processed`);
@@ -47,6 +55,7 @@ class ReminderJob {
         console.error('❌ Critical error in reminder job:', error);
       } finally {
         this.isRunning = false;
+        console.log('🔄 Job completed, isRunning set to false');
       }
     }, {
       scheduled: true,

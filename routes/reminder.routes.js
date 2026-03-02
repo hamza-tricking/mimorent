@@ -65,7 +65,7 @@ router.post('/reminders', auth, async (req, res) => {
       reservationId,
       {
         reminderType,
-        reminderDateTime: reminderDateTime ? new Date(reminderDateTime) : undefined,
+        reminderDateTime: reminderDateTime ? new Date(reminderDateTime + 'Z') : undefined,
         daysBeforeEnd,
         message
       }

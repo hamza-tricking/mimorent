@@ -145,6 +145,7 @@ reminderSchema.statics.createForReservation = async function(reservationId, remi
 // Static method to find due reminders
 reminderSchema.statics.findDueReminders = async function() {
   const now = new Date();
+  console.log('🔍 Finding due reminders at:', now.toISOString());
   
   // Find reminders with specific time that are due
   const specificTimeReminders = await this.find({
@@ -153,11 +154,18 @@ reminderSchema.statics.findDueReminders = async function() {
     status: 'pending'
   }).populate('reservationId propertyId');
   
+  console.log('📋 Found specific time reminders:', specificTimeReminders.length);
+  specificTimeReminders.forEach(r => {
+    console.log(`  - ${r._id}: ${r.reminderDateTime} (${r.reminderType})`);
+  });
+  
   // Find reminders before end that are due
   const beforeEndReminders = await this.find({
     reminderType: 'before_end',
     status: 'pending'
   }).populate('reservationId propertyId');
+  
+  console.log('📋 Found before end reminders:', beforeEndReminders.length);
   
   // Filter before end reminders to only include those that are actually due
   const dueBeforeEndReminders = beforeEndReminders.filter(reminder => {
@@ -169,7 +177,12 @@ reminderSchema.statics.findDueReminders = async function() {
     return now >= reminderDate;
   });
   
-  return [...specificTimeReminders, ...dueBeforeEndReminders];
+  console.log('📋 Due before end reminders:', dueBeforeEndReminders.length);
+  
+  const allDueReminders = [...specificTimeReminders, ...dueBeforeEndReminders];
+  console.log('📋 Total due reminders:', allDueReminders.length);
+  
+  return allDueReminders;
 };
 
 // Instance method to mark as sent

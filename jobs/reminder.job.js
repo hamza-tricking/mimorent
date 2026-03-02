@@ -16,8 +16,8 @@ class ReminderJob {
     
     console.log('🚀 Starting reminder processing job...');
     
-    // Schedule to run every 5 minutes
-    this.job = cron.schedule('*/5 * * * *', async () => {
+    // Schedule to run every 1 minute for testing
+    this.job = cron.schedule('* * * * *', async () => {
       if (this.isRunning) {
         console.log('⏳ Previous reminder job still running, skipping...');
         return;

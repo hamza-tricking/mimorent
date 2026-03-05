@@ -5,7 +5,7 @@ const auth = require('../middlewares/auth.middleware');
 
 console.log('Employer notification routes loaded successfully');
 
-// Get notifications for employer (only their wilaya properties)
+// Get notifications for employer (all properties in his wilaya)
 router.get('/', auth, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -17,17 +17,16 @@ router.get('/', auth, async (req, res) => {
     console.log('Fetching notifications for employer:', userId);
     console.log('Employer wilaya:', req.user.wilayaId);
 
-    // Get employer's properties to filter notifications
+    // Get all properties in employer's wilaya
     const Property = require('../models/property.model');
-    const employerProperties = await Property.find({ 
-      createdBy: userId,
+    const wilayaProperties = await Property.find({ 
       wilayaId: req.user.wilayaId 
     }).select('_id');
     
-    const propertyIds = employerProperties.map(p => p._id);
-    console.log('Employer property IDs:', propertyIds);
+    const propertyIds = wilayaProperties.map(p => p._id);
+    console.log('Properties in employer wilaya:', propertyIds.length);
 
-    // Fetch notifications related to employer's properties
+    // Fetch notifications related to all properties in the wilaya
     const notifications = await Notification.find({
       propertyId: { $in: propertyIds }
     })
@@ -42,7 +41,7 @@ router.get('/', auth, async (req, res) => {
       propertyId: { $in: propertyIds }
     });
 
-    console.log('Found employer notifications:', notifications.length);
+    console.log('Found notifications for employer wilaya:', notifications.length);
 
     res.json({
       success: true,
@@ -68,14 +67,13 @@ router.get('/unread-count', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // Get employer's properties
+    // Get all properties in employer's wilaya
     const Property = require('../models/property.model');
-    const employerProperties = await Property.find({ 
-      createdBy: userId,
+    const wilayaProperties = await Property.find({ 
       wilayaId: req.user.wilayaId 
     }).select('_id');
     
-    const propertyIds = employerProperties.map(p => p._id);
+    const propertyIds = wilayaProperties.map(p => p._id);
 
     const unreadCount = await Notification.countDocuments({ 
       propertyId: { $in: propertyIds },
@@ -100,14 +98,13 @@ router.put('/:id/read', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // Verify notification belongs to employer's property
+    // Verify notification belongs to a property in employer's wilaya
     const Property = require('../models/property.model');
-    const employerProperties = await Property.find({ 
-      createdBy: userId,
+    const wilayaProperties = await Property.find({ 
       wilayaId: req.user.wilayaId 
     }).select('_id');
     
-    const propertyIds = employerProperties.map(p => p._id);
+    const propertyIds = wilayaProperties.map(p => p._id);
 
     const notification = await Notification.findOneAndUpdate(
       { _id: req.params.id, propertyId: { $in: propertyIds } },
@@ -143,14 +140,13 @@ router.put('/read-all', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // Get employer's properties
+    // Get all properties in employer's wilaya
     const Property = require('../models/property.model');
-    const employerProperties = await Property.find({ 
-      createdBy: userId,
+    const wilayaProperties = await Property.find({ 
       wilayaId: req.user.wilayaId 
     }).select('_id');
     
-    const propertyIds = employerProperties.map(p => p._id);
+    const propertyIds = wilayaProperties.map(p => p._id);
 
     const result = await Notification.updateMany(
       { propertyId: { $in: propertyIds }, read: false },
@@ -178,14 +174,13 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // Verify notification belongs to employer's property
+    // Verify notification belongs to a property in employer's wilaya
     const Property = require('../models/property.model');
-    const employerProperties = await Property.find({ 
-      createdBy: userId,
+    const wilayaProperties = await Property.find({ 
       wilayaId: req.user.wilayaId 
     }).select('_id');
     
-    const propertyIds = employerProperties.map(p => p._id);
+    const propertyIds = wilayaProperties.map(p => p._id);
 
     const notification = await Notification.findOneAndDelete({
       _id: req.params.id,

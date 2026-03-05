@@ -36,6 +36,12 @@ router.get('/', auth, async (req, res) => {
         .skip(skip)
         .limit(limit);
 
+      console.log('Notifications with seenBy:', notifications.map(n => ({
+        id: n._id,
+        seenBy: n.seenBy,
+        seenByLength: n.seenBy?.length || 0
+      })));
+
       total = await Notification.countDocuments({});
       console.log('Admin user - fetching all notifications');
     } else {

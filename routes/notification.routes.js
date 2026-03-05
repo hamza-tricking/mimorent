@@ -12,19 +12,47 @@ router.get('/', auth, async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    // Use the correct user ID property
+    // For admin users, show all notifications from the system
+    // For regular users, show only their notifications
     const userId = req.user._id || req.user.id;
     console.log('Fetching notifications for user:', userId);
+    console.log('Full user object:', JSON.stringify(req.user, null, 2));
 
-    const notifications = await Notification.find({ userId })
-      .populate('reservationId', 'customerName customerPhone')
-      .populate('propertyId', 'title')
-      .populate('metadata.reminderId', 'message reminderType')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    // Check if user is admin - if so, show all notifications
+    const isAdmin = req.user.role === 'admin' || req.user.isAdmin === true;
+    console.log('Is admin user:', isAdmin);
 
-    const total = await Notification.countDocuments({ userId });
+    let notifications;
+    let total;
+
+    if (isAdmin) {
+      // Admin can see all notifications
+      notifications = await Notification.find({})
+        .populate('reservationId', 'customerName customerPhone')
+        .populate('propertyId', 'title')
+        .populate('metadata.reminderId', 'message reminderType')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      total = await Notification.countDocuments({});
+      console.log('Admin user - fetching all notifications');
+    } else {
+      // Regular user sees only their notifications
+      notifications = await Notification.find({ userId })
+        .populate('reservationId', 'customerName customerPhone')
+        .populate('propertyId', 'title')
+        .populate('metadata.reminderId', 'message reminderType')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      total = await Notification.countDocuments({ userId });
+      console.log('Regular user - fetching only their notifications');
+    }
+
+    console.log('Found notifications:', notifications.length);
+    console.log('Total notifications count:', total);
 
     res.json({
       success: true,

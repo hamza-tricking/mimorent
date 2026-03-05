@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Notification = require('../models/notification.model');
-const auth = require('../middleware/auth');
+const auth = require('../middlewares/auth.middleware');
 
 // Get all notifications for the logged-in admin
 router.get('/', auth, async (req, res) => {

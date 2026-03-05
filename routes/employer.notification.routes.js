@@ -53,7 +53,7 @@ router.get('/', auth, async (req, res) => {
       .populate('reservationId', 'customerName customerPhone')
       .populate('propertyId', 'title wilayaId')
       .populate('metadata.reminderId', 'message reminderType')
-      .populate('seenBy', 'username fullName')
+      .populate('seenBy', 'username firstName lastName name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

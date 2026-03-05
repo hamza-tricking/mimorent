@@ -31,6 +31,7 @@ router.get('/', auth, async (req, res) => {
         .populate('reservationId', 'customerName customerPhone')
         .populate('propertyId', 'title')
         .populate('metadata.reminderId', 'message reminderType')
+        .populate('seenBy', 'username fullName')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -43,12 +44,13 @@ router.get('/', auth, async (req, res) => {
         .populate('reservationId', 'customerName customerPhone')
         .populate('propertyId', 'title')
         .populate('metadata.reminderId', 'message reminderType')
+        .populate('seenBy', 'username fullName')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
 
       total = await Notification.countDocuments({ userId });
-      console.log('Regular user - fetching only their notifications');
+      console.log('Regular user - fetching their notifications');
     }
 
     console.log('Found notifications:', notifications.length);

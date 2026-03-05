@@ -88,6 +88,7 @@ app.use('/api/admin', require('./routes/financial.routes'));
 app.use('/api/admin', require('./routes/reminder.routes'));
 console.log('Notification routes registered');
 app.use('/api/employer', require('./routes/employer.routes'));
+app.use('/api/employer', require('./routes/employer.notification.routes'));
 app.use('/api', require('./routes/public.routes'));
 
 // Start reminder job

@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 // const Notification = require('../models/notification.model');
-const auth = require('../middlewares/auth.middleware');
+// const auth = require('../middlewares/auth.middleware');
 
 console.log('Notification routes loaded successfully');
 
 // Get all notifications for the logged-in admin
-router.get('/', auth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     // Temporary response to test if the route is working
     res.json({

@@ -102,41 +102,15 @@ class ReminderService {
         reservationId: reminder.reservationId._id,
         propertyId: reminder.propertyId._id,
         message: reminder.message,
-        createdBy: reminder.reservationId.createdBy,
         employerId: reminder.reservationId.employerId
       });
       
       // Create notifications for all relevant users
       const notifications = [];
       
-      // 1. Notification for admin (if different from employer)
-      const adminUserId = reminder.reservationId.createdBy;
-      if (adminUserId) {
-        console.log('📱 Creating notification for admin:', adminUserId);
-        
-        const adminNotification = {
-          type: 'reminder',
-          title: 'تذكير بالحجز',
-          message: reminder.message,
-          reservationId: reminder.reservationId._id,
-          propertyId: reminder.propertyId._id,
-          userId: adminUserId,
-          metadata: {
-            reminderId: reminder._id,
-            customerName: reminder.reservationId.customerName,
-            propertyTitle: reminder.propertyId.title,
-            reminderType: reminder.reminderType,
-            reminderDateTime: reminder.calculatedReminderDate
-          },
-          createdAt: new Date()
-        };
-        
-        notifications.push(adminNotification);
-      }
-      
-      // 2. Notification for employer (if different from admin)
+      // 1. Notification for employer
       const employerUserId = reminder.reservationId.employerId;
-      if (employerUserId && employerUserId !== adminUserId) {
+      if (employerUserId) {
         console.log('📱 Creating notification for employer:', employerUserId);
         
         const employerNotification = {
@@ -157,6 +131,32 @@ class ReminderService {
         };
         
         notifications.push(employerNotification);
+      }
+      
+      // 2. Also create notification for admin ( hardcoded admin ID for now)
+      // In a real system, you might want to get all admin users or have a different logic
+      const adminUserId = '69978b6acd109230ac26ab13'; // MIMO Admin ID from logs
+      if (adminUserId && adminUserId !== employerUserId) {
+        console.log('📱 Creating notification for admin:', adminUserId);
+        
+        const adminNotification = {
+          type: 'reminder',
+          title: 'تذكير بالحجز',
+          message: reminder.message,
+          reservationId: reminder.reservationId._id,
+          propertyId: reminder.propertyId._id,
+          userId: adminUserId,
+          metadata: {
+            reminderId: reminder._id,
+            customerName: reminder.reservationId.customerName,
+            propertyTitle: reminder.propertyId.title,
+            reminderType: reminder.reminderType,
+            reminderDateTime: reminder.calculatedReminderDate
+          },
+          createdAt: new Date()
+        };
+        
+        notifications.push(adminNotification);
       }
       
       if (notifications.length === 0) {

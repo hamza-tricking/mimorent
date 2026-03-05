@@ -27,6 +27,7 @@ class ReminderJob {
       
       try {
         console.log('⏰ Running reminder job at:', new Date().toISOString());
+        console.log('🔍 Checking for due reminders...');
         
         // Add timeout to prevent hanging
         const timeoutPromise = new Promise((_, reject) => {
@@ -38,15 +39,19 @@ class ReminderJob {
           timeoutPromise
         ]);
         
+        console.log('📊 Job result:', result);
+        
         if (result.success) {
           console.log(`✅ Reminder job completed: ${result.processed}/${result.total} reminders processed`);
           
           // Log details for processed reminders
-          if (result.reminders.length > 0) {
+          if (result.reminders && result.reminders.length > 0) {
             console.log('📋 Processed reminders:');
             result.reminders.forEach(reminder => {
               console.log(`  - Reservation ${reminder.reservationId._id}: ${reminder.message}`);
             });
+          } else {
+            console.log('📋 No reminders were processed in this run');
           }
         } else {
           console.error('❌ Reminder job failed:', result.error);

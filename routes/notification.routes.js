@@ -36,44 +36,20 @@ router.get('/', auth, async (req, res) => {
         .skip(skip)
         .limit(limit);
 
-      console.log('Notifications with seenBy:', notifications.map(n => ({
-        id: n._id,
-        seenBy: n.seenBy.map(user => ({
-          _id: user._id,
-          username: user.username,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          name: user.name,
-          fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || 'Unknown User',
-          isObjectId: typeof user._id === 'object'
-        })),
-        seenByLength: n.seenBy?.length || 0
-      })));
-
-      // Also log the raw seenBy data
-      notifications.forEach(n => {
-        console.log(`Notification ${n._id} raw seenBy:`, JSON.stringify(n.seenBy, null, 2));
-      });
-
       total = await Notification.countDocuments({});
-      console.log('Admin user - fetching all notifications');
     } else {
       // Regular user sees only their notifications
       notifications = await Notification.find({ userId })
         .populate('reservationId', 'customerName customerPhone')
         .populate('propertyId', 'title')
         .populate('metadata.reminderId', 'message reminderType')
-        .populate('seenBy', 'username fullName')
+        .populate('seenBy', 'username firstName lastName name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
 
       total = await Notification.countDocuments({ userId });
-      console.log('Regular user - fetching their notifications');
     }
-
-    console.log('Found notifications:', notifications.length);
-    console.log('Total notifications count:', total);
 
     res.json({
       success: true,
@@ -112,83 +88,6 @@ router.get('/unread-count', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch unread count'
-    });
-  }
-});
-
-// Fix all notifications with undefined fullName in seenBy
-router.post('/fix-seenby', auth, async (req, res) => {
-  try {
-    const userId = req.user._id || req.user.id;
-    const fullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.name || 'Unknown User';
-    
-    console.log('🔧 Fixing all notifications with undefined fullName for user:', fullName);
-    console.log('🔧 User ID:', userId);
-    
-    // Find ALL notifications first to check their seenBy data
-    const allNotifications = await Notification.find({});
-    console.log(`🔍 Found ${allNotifications.length} total notifications`);
-    
-    let fixedCount = 0;
-    
-    // Check each notification
-    for (const notification of allNotifications) {
-      try {
-        console.log(`Checking notification ${notification._id}:`, JSON.stringify(notification.seenBy, null, 2));
-        
-        // Check if any seenBy entry has undefined fullName or matches current user
-        const needsFix = notification.seenBy?.some(seenUser => {
-          console.log('Checking seenUser:', seenUser);
-          const userIdMatch = seenUser._id && seenUser._id.toString() === userId.toString();
-          const fullNameMatch = seenUser.fullName === 'undefined undefined';
-          const wrongFullName = userIdMatch && seenUser.fullName !== fullName;
-          
-          console.log(`User ID match: ${userIdMatch}, Full name undefined: ${fullNameMatch}, Wrong full name: ${wrongFullName}`);
-          
-          return fullNameMatch || wrongFullName;
-        });
-        
-        if (needsFix) {
-          console.log(`🔧 Fixing notification ${notification._id}`);
-          
-          // Find the index of the seenBy entry for this user
-          const seenByIndex = notification.seenBy.findIndex(seenUser => 
-            seenUser._id && seenUser._id.toString() === userId.toString()
-          );
-          
-          if (seenByIndex !== -1) {
-            // Update the seenBy array directly and save the document
-            notification.seenBy[seenByIndex].fullName = fullName;
-            
-            const result = await notification.save();
-            
-            console.log(`Update result:`, result);
-            
-            if (result) {
-              fixedCount++;
-              console.log(`✅ Fixed notification ${notification._id}`);
-            }
-          }
-        }
-      } catch (notifError) {
-        console.error(`❌ Error processing notification ${notification._id}:`, notifError);
-        continue;
-      }
-    }
-    
-    console.log(`🎉 Fixed ${fixedCount} notifications`);
-    
-    res.json({
-      success: true,
-      message: `Fixed ${fixedCount} notifications`
-    });
-  } catch (error) {
-    console.error('❌ Error fixing seenBy:', error);
-    console.error('❌ Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fix seenBy',
-      error: error.message
     });
   }
 });

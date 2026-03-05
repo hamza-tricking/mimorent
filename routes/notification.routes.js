@@ -148,24 +148,27 @@ router.post('/fix-seenby', auth, async (req, res) => {
         if (needsFix) {
           console.log(`🔧 Fixing notification ${notification._id}`);
           
-          // Update all seenBy entries for this user
-          const result = await Notification.updateMany(
-            {
-              _id: notification._id,
-              'seenBy._id': userId
-            },
-            {
-              $set: {
-                'seenBy.$.fullName': fullName
-              }
-            }
+          // Find the index of the seenBy entry for this user
+          const seenByIndex = notification.seenBy.findIndex(seenUser => 
+            seenUser._id && seenUser._id.toString() === userId.toString()
           );
           
-          console.log(`Update result:`, result);
-          
-          if (result.modifiedCount > 0) {
-            fixedCount++;
-            console.log(`✅ Fixed notification ${notification._id}`);
+          if (seenByIndex !== -1) {
+            // Update using positional operator with array index
+            const updateQuery = {};
+            updateQuery[`seenBy.${seenByIndex}.fullName`] = fullName;
+            
+            const result = await Notification.updateOne(
+              { _id: notification._id },
+              { $set: updateQuery }
+            );
+            
+            console.log(`Update result:`, result);
+            
+            if (result.modifiedCount > 0) {
+              fixedCount++;
+              console.log(`✅ Fixed notification ${notification._id}`);
+            }
           }
         }
       } catch (notifError) {

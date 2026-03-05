@@ -31,6 +31,18 @@ const notificationSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  read: {
+    type: Boolean,
+    default: false
+  },
+  readAt: {
+    type: Date,
+    default: null
+  },
+  seenBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   metadata: {
     reminderId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -41,19 +53,14 @@ const notificationSchema = new mongoose.Schema({
     reminderType: String,
     reminderDateTime: Date
   },
-  read: {
-    type: Boolean,
-    default: false
-  },
   createdAt: {
     type: Date,
     default: Date.now
-  },
-  readAt: {
-    type: Date
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // Indexes for better performance

@@ -95,6 +95,39 @@ router.get('/unread-count', auth, async (req, res) => {
   }
 });
 
+// Mark notification as seen
+router.put('/:id/seen', auth, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    
+    const notification = await Notification.findByIdAndUpdate(
+      req.params.id,
+      { 
+        $addToSet: { seenBy: userId }
+      },
+      { new: true }
+    ).populate('seenBy', 'username fullName');
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: notification
+    });
+  } catch (error) {
+    console.error('Error marking notification as seen:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark notification as seen'
+    });
+  }
+});
+
 // Mark notification as read
 router.put('/:id/read', auth, async (req, res) => {
   try {

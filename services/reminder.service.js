@@ -102,46 +102,77 @@ class ReminderService {
         reservationId: reminder.reservationId._id,
         propertyId: reminder.propertyId._id,
         message: reminder.message,
-        createdBy: reminder.reservationId.createdBy
+        createdBy: reminder.reservationId.createdBy,
+        employerId: reminder.reservationId.employerId
       });
       
-      // Get the actual user ID from the reservation
-      const userId = reminder.reservationId.createdBy || reminder.reservationId.employerId;
+      // Create notifications for all relevant users
+      const notifications = [];
       
-      if (!userId) {
-        console.log('⚠️ No valid userId found for notification, skipping...');
-        return { success: false, error: 'No valid userId found' };
+      // 1. Notification for admin (if different from employer)
+      const adminUserId = reminder.reservationId.createdBy;
+      if (adminUserId) {
+        console.log('📱 Creating notification for admin:', adminUserId);
+        
+        const adminNotification = {
+          type: 'reminder',
+          title: 'تذكير بالحجز',
+          message: reminder.message,
+          reservationId: reminder.reservationId._id,
+          propertyId: reminder.propertyId._id,
+          userId: adminUserId,
+          metadata: {
+            reminderId: reminder._id,
+            customerName: reminder.reservationId.customerName,
+            propertyTitle: reminder.propertyId.title,
+            reminderType: reminder.reminderType,
+            reminderDateTime: reminder.calculatedReminderDate
+          },
+          createdAt: new Date()
+        };
+        
+        notifications.push(adminNotification);
       }
       
-      console.log('📱 Using userId for notification:', userId);
+      // 2. Notification for employer (if different from admin)
+      const employerUserId = reminder.reservationId.employerId;
+      if (employerUserId && employerUserId !== adminUserId) {
+        console.log('📱 Creating notification for employer:', employerUserId);
+        
+        const employerNotification = {
+          type: 'reminder',
+          title: 'تذكير بالحجز',
+          message: reminder.message,
+          reservationId: reminder.reservationId._id,
+          propertyId: reminder.propertyId._id,
+          userId: employerUserId,
+          metadata: {
+            reminderId: reminder._id,
+            customerName: reminder.reservationId.customerName,
+            propertyTitle: reminder.propertyId.title,
+            reminderType: reminder.reminderType,
+            reminderDateTime: reminder.calculatedReminderDate
+          },
+          createdAt: new Date()
+        };
+        
+        notifications.push(employerNotification);
+      }
       
-      // Create system notification record
-      const notification = {
-        type: 'reminder',
-        title: 'تذكير بالحجز',
-        message: reminder.message,
-        reservationId: reminder.reservationId._id,
-        propertyId: reminder.propertyId._id,
-        userId: userId, // Use actual user ID from reservation
-        metadata: {
-          reminderId: reminder._id,
-          customerName: reminder.reservationId.customerName,
-          propertyTitle: reminder.propertyId.title,
-          reminderType: reminder.reminderType,
-          reminderDateTime: reminder.calculatedReminderDate
-        },
-        createdAt: new Date()
-      };
+      if (notifications.length === 0) {
+        console.log('⚠️ No valid users found for notifications, skipping...');
+        return { success: false, error: 'No valid users found' };
+      }
       
-      console.log('📱 Notification object to create:', notification);
+      console.log('📱 Creating notifications:', notifications.length, 'notifications');
       
-      // Save notification to database
+      // Save all notifications to database
       const Notification = require('../models/notification.model');
-      const savedNotification = await Notification.create(notification);
+      const savedNotifications = await Notification.create(notifications);
       
-      console.log('📱 System notification created and saved:', savedNotification);
+      console.log('📱 System notifications created and saved:', savedNotifications);
       
-      return { success: true, notificationId: savedNotification._id };
+      return { success: true, notificationIds: savedNotifications.map(n => n._id) };
     } catch (error) {
       console.error('❌ Error creating system notification:', error);
       console.error('❌ Error details:', error.message);

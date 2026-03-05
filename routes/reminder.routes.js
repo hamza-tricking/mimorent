@@ -157,12 +157,20 @@ router.put('/reminders/:reminderId/sent', auth, async (req, res) => {
       });
     }
     
+    console.log('🔄 Manually marking reminder as sent:', reminderId);
+    
+    // Send notifications before marking as sent
+    const ReminderService = require('../services/reminder.service');
+    const notificationResult = await ReminderService.sendNotification(reminder);
+    console.log('📧 Notification result for manual reminder:', notificationResult);
+    
+    // Mark reminder as sent
     await reminder.markAsSent();
     
     res.json({
       success: true,
       message: 'Reminder marked as sent successfully',
-      data: { reminder }
+      data: { reminder, notificationResult }
     });
   } catch (error) {
     console.error('Error marking reminder as sent:', error);

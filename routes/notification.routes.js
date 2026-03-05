@@ -129,6 +129,8 @@ router.put('/:id/seen', auth, async (req, res) => {
     }
     
     // Add user with full details to seenBy
+    const fullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.name || 'Unknown User';
+    
     const updatedNotification = await Notification.findByIdAndUpdate(
       req.params.id,
       { 
@@ -136,7 +138,7 @@ router.put('/:id/seen', auth, async (req, res) => {
           seenBy: {
             _id: userId,
             username: req.user.username || req.user.name || 'Unknown',
-            fullName: req.user.fullName || req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'Unknown User'
+            fullName: fullName
           }
         }
       },
@@ -145,6 +147,7 @@ router.put('/:id/seen', auth, async (req, res) => {
 
     console.log('Updated notification with seenBy:', updatedNotification.seenBy);
     console.log('User object from req.user:', req.user);
+    console.log('Calculated fullName:', fullName);
 
     res.json({
       success: true,

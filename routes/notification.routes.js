@@ -97,6 +97,49 @@ router.get('/unread-count', auth, async (req, res) => {
   }
 });
 
+// Fix all notifications with undefined fullName in seenBy
+router.post('/fix-seenby', auth, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const fullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.name || 'Unknown User';
+    
+    console.log('Fixing all notifications with undefined fullName for user:', fullName);
+    
+    // Find all notifications with undefined fullName in seenBy
+    const notifications = await Notification.find({
+      'seenBy.fullName': 'undefined undefined'
+    });
+    
+    console.log(`Found ${notifications.length} notifications to fix`);
+    
+    // Update each notification
+    for (const notification of notifications) {
+      await Notification.updateMany(
+        {
+          _id: notification._id,
+          'seenBy.fullName': 'undefined undefined'
+        },
+        {
+          $set: {
+            'seenBy.$.fullName': fullName
+          }
+        }
+      );
+    }
+    
+    res.json({
+      success: true,
+      message: `Fixed ${notifications.length} notifications`
+    });
+  } catch (error) {
+    console.error('Error fixing seenBy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fix seenBy'
+    });
+  }
+});
+
 // Mark notification as seen
 router.put('/:id/seen', auth, async (req, res) => {
   try {

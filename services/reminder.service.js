@@ -101,7 +101,7 @@ class ReminderService {
         message: reminder.message,
         reservationId: reminder.reservationId._id,
         propertyId: reminder.propertyId._id,
-        userId: reminder.reservationId.createdBy || 'system', // Use reservation creator or system
+        userId: '67a4f766af927263dca66ec9', // Hardcoded admin user ID for testing
         metadata: {
           reminderId: reminder._id,
           customerName: reminder.reservationId.customerName,
@@ -111,6 +111,9 @@ class ReminderService {
         },
         createdAt: new Date()
       };
+      
+      console.log('📱 Creating notification for user:', notification.userId);
+      console.log('📱 Notification data:', notification);
       
       // Save notification to database
       const Notification = require('../models/notification.model');

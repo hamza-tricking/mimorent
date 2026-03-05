@@ -143,6 +143,9 @@ router.put('/:id/seen', auth, async (req, res) => {
       { new: true }
     ).populate('seenBy', 'username fullName');
 
+    console.log('Updated notification with seenBy:', updatedNotification.seenBy);
+    console.log('User object from req.user:', req.user);
+
     res.json({
       success: true,
       data: updatedNotification

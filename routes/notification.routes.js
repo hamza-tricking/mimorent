@@ -47,6 +47,11 @@ router.get('/', auth, async (req, res) => {
         seenByLength: n.seenBy?.length || 0
       })));
 
+      // Also log the raw seenBy data
+      notifications.forEach(n => {
+        console.log(`Notification ${n._id} raw seenBy:`, JSON.stringify(n.seenBy, null, 2));
+      });
+
       total = await Notification.countDocuments({});
       console.log('Admin user - fetching all notifications');
     } else {

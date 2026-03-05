@@ -120,6 +120,7 @@ router.post('/fix-seenby', auth, async (req, res) => {
     const fullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.name || 'Unknown User';
     
     console.log('🔧 Fixing all notifications with undefined fullName for user:', fullName);
+    console.log('🔧 User ID:', userId);
     
     // Find ALL notifications first to check their seenBy data
     const allNotifications = await Notification.find({});
@@ -129,34 +130,47 @@ router.post('/fix-seenby', auth, async (req, res) => {
     
     // Check each notification
     for (const notification of allNotifications) {
-      console.log(`Checking notification ${notification._id}:`, JSON.stringify(notification.seenBy, null, 2));
-      
-      // Check if any seenBy entry has undefined fullName or matches current user
-      const needsFix = notification.seenBy?.some(seenUser => 
-        seenUser.fullName === 'undefined undefined' || 
-        (seenUser._id.toString() === userId.toString() && seenUser.fullName !== fullName)
-      );
-      
-      if (needsFix) {
-        console.log(`🔧 Fixing notification ${notification._id}`);
+      try {
+        console.log(`Checking notification ${notification._id}:`, JSON.stringify(notification.seenBy, null, 2));
         
-        // Update all seenBy entries for this user
-        const result = await Notification.updateMany(
-          {
-            _id: notification._id,
-            'seenBy._id': userId
-          },
-          {
-            $set: {
-              'seenBy.$.fullName': fullName
+        // Check if any seenBy entry has undefined fullName or matches current user
+        const needsFix = notification.seenBy?.some(seenUser => {
+          console.log('Checking seenUser:', seenUser);
+          const userIdMatch = seenUser._id && seenUser._id.toString() === userId.toString();
+          const fullNameMatch = seenUser.fullName === 'undefined undefined';
+          const wrongFullName = userIdMatch && seenUser.fullName !== fullName;
+          
+          console.log(`User ID match: ${userIdMatch}, Full name undefined: ${fullNameMatch}, Wrong full name: ${wrongFullName}`);
+          
+          return fullNameMatch || wrongFullName;
+        });
+        
+        if (needsFix) {
+          console.log(`🔧 Fixing notification ${notification._id}`);
+          
+          // Update all seenBy entries for this user
+          const result = await Notification.updateMany(
+            {
+              _id: notification._id,
+              'seenBy._id': userId
+            },
+            {
+              $set: {
+                'seenBy.$.fullName': fullName
+              }
             }
+          );
+          
+          console.log(`Update result:`, result);
+          
+          if (result.modifiedCount > 0) {
+            fixedCount++;
+            console.log(`✅ Fixed notification ${notification._id}`);
           }
-        );
-        
-        if (result.modifiedCount > 0) {
-          fixedCount++;
-          console.log(`✅ Fixed notification ${notification._id}`);
         }
+      } catch (notifError) {
+        console.error(`❌ Error processing notification ${notification._id}:`, notifError);
+        continue;
       }
     }
     
@@ -168,9 +182,11 @@ router.post('/fix-seenby', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error fixing seenBy:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Failed to fix seenBy'
+      message: 'Failed to fix seenBy',
+      error: error.message
     });
   }
 });

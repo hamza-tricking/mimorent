@@ -93,29 +93,36 @@ class ReminderService {
   
   // System notification (in-app notification)
   static async sendSystemNotification(reminder) {
-    // Create system notification record
-    const notification = {
-      type: 'reminder',
-      title: 'تذكير بالحجز',
-      message: reminder.message,
-      reservationId: reminder.reservationId._id,
-      propertyId: reminder.propertyId._id,
-      userId: reminder.reservationId.createdBy || 'system', // Use reservation creator or system
-      metadata: {
-        reminderId: reminder._id,
-        customerName: reminder.reservationId.customerName,
-        propertyTitle: reminder.propertyId.title,
-        reminderType: reminder.reminderType,
-        reminderDateTime: reminder.calculatedReminderDate
-      },
-      createdAt: new Date()
-    };
-    
-    // Here you would save to your notifications collection
-    // For now, we'll just log it
-    console.log('📱 System notification created:', notification);
-    
-    return { success: true, notificationId: reminder._id };
+    try {
+      // Create system notification record
+      const notification = {
+        type: 'reminder',
+        title: 'تذكير بالحجز',
+        message: reminder.message,
+        reservationId: reminder.reservationId._id,
+        propertyId: reminder.propertyId._id,
+        userId: reminder.reservationId.createdBy || 'system', // Use reservation creator or system
+        metadata: {
+          reminderId: reminder._id,
+          customerName: reminder.reservationId.customerName,
+          propertyTitle: reminder.propertyId.title,
+          reminderType: reminder.reminderType,
+          reminderDateTime: reminder.calculatedReminderDate
+        },
+        createdAt: new Date()
+      };
+      
+      // Save notification to database
+      const Notification = require('../models/notification.model');
+      const savedNotification = await Notification.create(notification);
+      
+      console.log('📱 System notification created and saved:', savedNotification);
+      
+      return { success: true, notificationId: savedNotification._id };
+    } catch (error) {
+      console.error('Error creating system notification:', error);
+      return { success: false, error: error.message };
+    }
   }
   
   // Email notification

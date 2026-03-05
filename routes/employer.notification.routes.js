@@ -125,6 +125,158 @@ router.get('/unread-count', auth, async (req, res) => {
   }
 });
 
+// Mark notification as seen
+router.put('/:id/seen', auth, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    
+    // Get employer's office to find wilaya
+    const Office = require('../models/office.model');
+    const employerOffice = await Office.findById(req.user.officeId);
+    
+    if (!employerOffice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employer office not found'
+      });
+    }
+
+    // Get all properties in office's wilaya
+    const Property = require('../models/property.model');
+    const wilayaProperties = await Property.find({ 
+      wilayaId: employerOffice.wilayaId 
+    }).select('_id');
+    
+    const propertyIds = wilayaProperties.map(p => p._id);
+
+    // First get the notification to check if user is already in seenBy
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      propertyId: { $in: propertyIds }
+    });
+    
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found or access denied'
+      });
+    }
+    
+    // Check if user is already in seenBy
+    const alreadySeen = notification.seenBy.some(seenUserId => 
+      seenUserId.toString() === userId.toString()
+    );
+    
+    if (alreadySeen) {
+      // User already seen this notification, just return it
+      const populatedNotification = await Notification.findOne({
+        _id: req.params.id,
+        propertyId: { $in: propertyIds }
+      })
+        .populate('reservationId', 'customerName customerPhone')
+        .populate('propertyId', 'title wilayaId')
+        .populate('metadata.reminderId', 'message reminderType')
+        .populate('seenBy', 'username firstName lastName name');
+      
+      return res.json({
+        success: true,
+        data: populatedNotification
+      });
+    }
+    
+    // Add user with full details to seenBy
+    const fullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.name || 'Unknown User';
+    
+    const updatedNotification = await Notification.findOneAndUpdate(
+      { _id: req.params.id, propertyId: { $in: propertyIds } },
+      { 
+        $addToSet: { 
+          seenBy: {
+            _id: userId,
+            username: req.user.username || req.user.name || 'Unknown',
+            fullName: fullName
+          }
+        }
+      },
+      { new: true }
+    ).populate('reservationId', 'customerName customerPhone')
+      .populate('propertyId', 'title wilayaId')
+      .populate('metadata.reminderId', 'message reminderType')
+      .populate('seenBy', 'username firstName lastName name');
+
+    console.log('Employer marked notification as seen:', updatedNotification.seenBy);
+
+    res.json({
+      success: true,
+      data: updatedNotification
+    });
+  } catch (error) {
+    console.error('Error marking employer notification as seen:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark notification as seen'
+    });
+  }
+});
+
+// Mark all notifications as seen
+router.put('/seen-all', auth, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    
+    // Get employer's office to find wilaya
+    const Office = require('../models/office.model');
+    const employerOffice = await Office.findById(req.user.officeId);
+    
+    if (!employerOffice) {
+      return res.json({
+        success: true,
+        data: { modifiedCount: 0 }
+      });
+    }
+
+    // Get all properties in office's wilaya
+    const Property = require('../models/property.model');
+    const wilayaProperties = await Property.find({ 
+      wilayaId: employerOffice.wilayaId 
+    }).select('_id');
+    
+    const propertyIds = wilayaProperties.map(p => p._id);
+
+    // Add user to seenBy for all notifications in the wilaya
+    const fullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.name || 'Unknown User';
+    
+    const result = await Notification.updateMany(
+      { 
+        propertyId: { $in: propertyIds },
+        'seenBy._id': { $ne: userId } // Only update notifications where user hasn't seen them yet
+      },
+      { 
+        $addToSet: { 
+          seenBy: {
+            _id: userId,
+            username: req.user.username || req.user.name || 'Unknown',
+            fullName: fullName
+          }
+        }
+      }
+    );
+
+    console.log('Employer marked all notifications as seen:', result.modifiedCount);
+
+    res.json({
+      success: true,
+      data: { modifiedCount: result.modifiedCount }
+    });
+  } catch (error) {
+    console.error('Error marking all employer notifications as seen:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark all notifications as seen'
+    });
+  }
+});
+
 // Mark notification as read
 router.put('/:id/read', auth, async (req, res) => {
   try {

@@ -136,7 +136,7 @@ router.put('/:id/seen', auth, async (req, res) => {
           seenBy: {
             _id: userId,
             username: req.user.username || req.user.name || 'Unknown',
-            fullName: req.user.fullName || req.user.name || 'Unknown User'
+            fullName: req.user.fullName || req.user.name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'Unknown User'
           }
         }
       },

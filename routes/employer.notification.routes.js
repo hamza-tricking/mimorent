@@ -5,26 +5,46 @@ const auth = require('../middlewares/auth.middleware');
 
 console.log('Employer notification routes loaded successfully');
 
-// Get notifications for employer (all properties in his wilaya)
+// Get notifications for employer (all properties in his office's wilaya)
 router.get('/', auth, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    // Get employer's wilaya
+    // Get employer's office and wilaya
     const userId = req.user._id || req.user.id;
     console.log('Fetching notifications for employer:', userId);
-    console.log('Employer wilaya:', req.user.wilayaId);
+    console.log('Employer officeId:', req.user.officeId);
 
-    // Get all properties in employer's wilaya
+    // Get employer's office to find wilaya
+    const Office = require('../models/office.model');
+    const employerOffice = await Office.findById(req.user.officeId);
+    
+    if (!employerOffice) {
+      console.log('No office found for employer');
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          pages: 0
+        }
+      });
+    }
+
+    console.log('Employer office wilayaId:', employerOffice.wilayaId);
+
+    // Get all properties in office's wilaya
     const Property = require('../models/property.model');
     const wilayaProperties = await Property.find({ 
-      wilayaId: req.user.wilayaId 
+      wilayaId: employerOffice.wilayaId 
     }).select('_id');
     
     const propertyIds = wilayaProperties.map(p => p._id);
-    console.log('Properties in employer wilaya:', propertyIds.length);
+    console.log('Properties in office wilaya:', propertyIds.length);
 
     // Fetch notifications related to all properties in the wilaya
     const notifications = await Notification.find({
@@ -41,7 +61,7 @@ router.get('/', auth, async (req, res) => {
       propertyId: { $in: propertyIds }
     });
 
-    console.log('Found notifications for employer wilaya:', notifications.length);
+    console.log('Found notifications for employer office wilaya:', notifications.length);
 
     res.json({
       success: true,
@@ -67,10 +87,21 @@ router.get('/unread-count', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // Get all properties in employer's wilaya
+    // Get employer's office to find wilaya
+    const Office = require('../models/office.model');
+    const employerOffice = await Office.findById(req.user.officeId);
+    
+    if (!employerOffice) {
+      return res.json({
+        success: true,
+        data: { unreadCount: 0 }
+      });
+    }
+
+    // Get all properties in office's wilaya
     const Property = require('../models/property.model');
     const wilayaProperties = await Property.find({ 
-      wilayaId: req.user.wilayaId 
+      wilayaId: employerOffice.wilayaId 
     }).select('_id');
     
     const propertyIds = wilayaProperties.map(p => p._id);
@@ -98,10 +129,21 @@ router.put('/:id/read', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // Verify notification belongs to a property in employer's wilaya
+    // Get employer's office to find wilaya
+    const Office = require('../models/office.model');
+    const employerOffice = await Office.findById(req.user.officeId);
+    
+    if (!employerOffice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employer office not found'
+      });
+    }
+
+    // Get all properties in office's wilaya
     const Property = require('../models/property.model');
     const wilayaProperties = await Property.find({ 
-      wilayaId: req.user.wilayaId 
+      wilayaId: employerOffice.wilayaId 
     }).select('_id');
     
     const propertyIds = wilayaProperties.map(p => p._id);
@@ -140,10 +182,21 @@ router.put('/read-all', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // Get all properties in employer's wilaya
+    // Get employer's office to find wilaya
+    const Office = require('../models/office.model');
+    const employerOffice = await Office.findById(req.user.officeId);
+    
+    if (!employerOffice) {
+      return res.json({
+        success: true,
+        data: { modifiedCount: 0 }
+      });
+    }
+
+    // Get all properties in office's wilaya
     const Property = require('../models/property.model');
     const wilayaProperties = await Property.find({ 
-      wilayaId: req.user.wilayaId 
+      wilayaId: employerOffice.wilayaId 
     }).select('_id');
     
     const propertyIds = wilayaProperties.map(p => p._id);
@@ -174,10 +227,21 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // Verify notification belongs to a property in employer's wilaya
+    // Get employer's office to find wilaya
+    const Office = require('../models/office.model');
+    const employerOffice = await Office.findById(req.user.officeId);
+    
+    if (!employerOffice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employer office not found'
+      });
+    }
+
+    // Get all properties in office's wilaya
     const Property = require('../models/property.model');
     const wilayaProperties = await Property.find({ 
-      wilayaId: req.user.wilayaId 
+      wilayaId: employerOffice.wilayaId 
     }).select('_id');
     
     const propertyIds = wilayaProperties.map(p => p._id);

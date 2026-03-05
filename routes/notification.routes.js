@@ -114,18 +114,27 @@ router.post('/fix-seenby', auth, async (req, res) => {
     const userId = req.user._id || req.user.id;
     const fullName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.name || 'Unknown User';
     
-    console.log('Fixing all notifications with undefined fullName for user:', fullName);
+    console.log('🔧 Fixing all notifications with undefined fullName for user:', fullName);
     
     // Find all notifications with undefined fullName in seenBy
     const notifications = await Notification.find({
       'seenBy.fullName': 'undefined undefined'
     });
     
-    console.log(`Found ${notifications.length} notifications to fix`);
+    console.log(`🔍 Found ${notifications.length} notifications to fix`);
+    
+    if (notifications.length === 0) {
+      console.log('✅ No notifications need fixing');
+      return res.json({
+        success: true,
+        message: 'No notifications need fixing'
+      });
+    }
     
     // Update each notification
+    let fixedCount = 0;
     for (const notification of notifications) {
-      await Notification.updateMany(
+      const result = await Notification.updateMany(
         {
           _id: notification._id,
           'seenBy.fullName': 'undefined undefined'
@@ -136,14 +145,21 @@ router.post('/fix-seenby', auth, async (req, res) => {
           }
         }
       );
+      
+      if (result.modifiedCount > 0) {
+        fixedCount++;
+        console.log(`✅ Fixed notification ${notification._id}`);
+      }
     }
+    
+    console.log(`🎉 Fixed ${fixedCount} notifications`);
     
     res.json({
       success: true,
-      message: `Fixed ${notifications.length} notifications`
+      message: `Fixed ${fixedCount} notifications`
     });
   } catch (error) {
-    console.error('Error fixing seenBy:', error);
+    console.error('❌ Error fixing seenBy:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fix seenBy'

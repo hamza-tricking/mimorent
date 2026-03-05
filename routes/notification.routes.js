@@ -5,8 +5,17 @@ const router = express.Router();
 
 console.log('Notification routes loaded successfully');
 
+// Debug: Print all registered routes
+console.log('Registered routes:');
+router.stack.forEach((r) => {
+  if (r.route && r.route.path) {
+    console.log(`  ${Object.keys(r.route.methods).join(', ').toUpperCase()} ${r.route.path}`);
+  }
+});
+
 // Get all notifications for the logged-in admin
 router.get('/', async (req, res) => {
+  console.log('NOTIFICATION ROUTE CALLED!!!');
   try {
     // Temporary response to test if the route is working
     res.json({

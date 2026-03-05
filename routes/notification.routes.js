@@ -38,7 +38,12 @@ router.get('/', auth, async (req, res) => {
 
       console.log('Notifications with seenBy:', notifications.map(n => ({
         id: n._id,
-        seenBy: n.seenBy,
+        seenBy: n.seenBy.map(user => ({
+          _id: user._id,
+          username: user.username,
+          fullName: user.fullName,
+          isObjectId: typeof user._id === 'object'
+        })),
         seenByLength: n.seenBy?.length || 0
       })));
 

@@ -105,6 +105,16 @@ class ReminderService {
         createdBy: reminder.reservationId.createdBy
       });
       
+      // Get the actual user ID from the reservation
+      const userId = reminder.reservationId.createdBy || reminder.reservationId.employerId;
+      
+      if (!userId) {
+        console.log('⚠️ No valid userId found for notification, skipping...');
+        return { success: false, error: 'No valid userId found' };
+      }
+      
+      console.log('📱 Using userId for notification:', userId);
+      
       // Create system notification record
       const notification = {
         type: 'reminder',
@@ -112,7 +122,7 @@ class ReminderService {
         message: reminder.message,
         reservationId: reminder.reservationId._id,
         propertyId: reminder.propertyId._id,
-        userId: reminder.reservationId.createdBy || 'system', // Use reservation creator or system
+        userId: userId, // Use actual user ID from reservation
         metadata: {
           reminderId: reminder._id,
           customerName: reminder.reservationId.customerName,

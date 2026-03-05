@@ -31,7 +31,7 @@ router.get('/', auth, async (req, res) => {
         .populate('reservationId', 'customerName customerPhone')
         .populate('propertyId', 'title')
         .populate('metadata.reminderId', 'message reminderType')
-        .populate('seenBy', 'username fullName')
+        .populate('seenBy', 'username firstName lastName name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -41,7 +41,10 @@ router.get('/', auth, async (req, res) => {
         seenBy: n.seenBy.map(user => ({
           _id: user._id,
           username: user.username,
-          fullName: user.fullName,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          name: user.name,
+          fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || 'Unknown User',
           isObjectId: typeof user._id === 'object'
         })),
         seenByLength: n.seenBy?.length || 0
@@ -154,18 +157,14 @@ router.post('/fix-seenby', auth, async (req, res) => {
           );
           
           if (seenByIndex !== -1) {
-            // Update using positional operator with array index
-            const updateQuery = {};
-            updateQuery[`seenBy.${seenByIndex}.fullName`] = fullName;
+            // Update the seenBy array directly and save the document
+            notification.seenBy[seenByIndex].fullName = fullName;
             
-            const result = await Notification.updateOne(
-              { _id: notification._id },
-              { $set: updateQuery }
-            );
+            const result = await notification.save();
             
             console.log(`Update result:`, result);
             
-            if (result.modifiedCount > 0) {
+            if (result) {
               fixedCount++;
               console.log(`✅ Fixed notification ${notification._id}`);
             }

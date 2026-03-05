@@ -10,7 +10,11 @@ router.get('/', auth, async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const notifications = await Notification.find({ userId: req.user.id })
+    // Use the correct user ID property
+    const userId = req.user._id || req.user.id;
+    console.log('Fetching notifications for user:', userId);
+
+    const notifications = await Notification.find({ userId })
       .populate('reservationId', 'customerName customerPhone')
       .populate('propertyId', 'title')
       .populate('metadata.reminderId', 'message reminderType')
@@ -18,7 +22,7 @@ router.get('/', auth, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const total = await Notification.countDocuments({ userId: req.user.id });
+    const total = await Notification.countDocuments({ userId });
 
     res.json({
       success: true,
@@ -42,8 +46,9 @@ router.get('/', auth, async (req, res) => {
 // Get unread notifications count
 router.get('/unread-count', auth, async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     const unreadCount = await Notification.countDocuments({ 
-      userId: req.user.id, 
+      userId, 
       read: false 
     });
 
@@ -63,8 +68,9 @@ router.get('/unread-count', auth, async (req, res) => {
 // Mark notification as read
 router.put('/:id/read', auth, async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.id },
+      { _id: req.params.id, userId },
       { 
         read: true, 
         readAt: new Date() 
@@ -95,8 +101,9 @@ router.put('/:id/read', auth, async (req, res) => {
 // Mark all notifications as read
 router.put('/read-all', auth, async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     const result = await Notification.updateMany(
-      { userId: req.user.id, read: false },
+      { userId, read: false },
       { 
         read: true, 
         readAt: new Date() 
@@ -119,9 +126,10 @@ router.put('/read-all', auth, async (req, res) => {
 // Delete notification
 router.delete('/:id', auth, async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     const notification = await Notification.findOneAndDelete({
       _id: req.params.id,
-      userId: req.user.id
+      userId
     });
 
     if (!notification) {
@@ -147,7 +155,8 @@ router.delete('/:id', auth, async (req, res) => {
 // Get notification statistics
 router.get('/stats', auth, async (req, res) => {
   try {
-    const stats = await Notification.getStats(req.user.id);
+    const userId = req.user._id || req.user.id;
+    const stats = await Notification.getStats(userId);
 
     res.json({
       success: true,

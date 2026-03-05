@@ -14,8 +14,11 @@ class ReminderService {
       
       for (const reminder of dueReminders) {
         try {
+          console.log(`🔔 Processing reminder ${reminder._id} for reservation ${reminder.reservationId._id}`);
+          
           // Send notification through configured channels
-          await this.sendNotification(reminder);
+          const notificationResult = await this.sendNotification(reminder);
+          console.log(`📧 Notification result for reminder ${reminder._id}:`, notificationResult);
           
           // Mark reminder as sent
           await reminder.markAsSent();
@@ -94,6 +97,14 @@ class ReminderService {
   // System notification (in-app notification)
   static async sendSystemNotification(reminder) {
     try {
+      console.log('📱 Creating system notification for reminder:', reminder._id);
+      console.log('📱 Reminder data:', {
+        reservationId: reminder.reservationId._id,
+        propertyId: reminder.propertyId._id,
+        message: reminder.message,
+        createdBy: reminder.reservationId.createdBy
+      });
+      
       // Create system notification record
       const notification = {
         type: 'reminder',
@@ -112,6 +123,8 @@ class ReminderService {
         createdAt: new Date()
       };
       
+      console.log('📱 Notification object to create:', notification);
+      
       // Save notification to database
       const Notification = require('../models/notification.model');
       const savedNotification = await Notification.create(notification);
@@ -120,7 +133,9 @@ class ReminderService {
       
       return { success: true, notificationId: savedNotification._id };
     } catch (error) {
-      console.error('Error creating system notification:', error);
+      console.error('❌ Error creating system notification:', error);
+      console.error('❌ Error details:', error.message);
+      console.error('❌ Error stack:', error.stack);
       return { success: false, error: error.message };
     }
   }

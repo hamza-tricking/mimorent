@@ -121,39 +121,42 @@ router.post('/fix-seenby', auth, async (req, res) => {
     
     console.log('🔧 Fixing all notifications with undefined fullName for user:', fullName);
     
-    // Find all notifications with undefined fullName in seenBy
-    const notifications = await Notification.find({
-      'seenBy.fullName': 'undefined undefined'
-    });
+    // Find ALL notifications first to check their seenBy data
+    const allNotifications = await Notification.find({});
+    console.log(`🔍 Found ${allNotifications.length} total notifications`);
     
-    console.log(`🔍 Found ${notifications.length} notifications to fix`);
-    
-    if (notifications.length === 0) {
-      console.log('✅ No notifications need fixing');
-      return res.json({
-        success: true,
-        message: 'No notifications need fixing'
-      });
-    }
-    
-    // Update each notification
     let fixedCount = 0;
-    for (const notification of notifications) {
-      const result = await Notification.updateMany(
-        {
-          _id: notification._id,
-          'seenBy.fullName': 'undefined undefined'
-        },
-        {
-          $set: {
-            'seenBy.$.fullName': fullName
-          }
-        }
+    
+    // Check each notification
+    for (const notification of allNotifications) {
+      console.log(`Checking notification ${notification._id}:`, JSON.stringify(notification.seenBy, null, 2));
+      
+      // Check if any seenBy entry has undefined fullName or matches current user
+      const needsFix = notification.seenBy?.some(seenUser => 
+        seenUser.fullName === 'undefined undefined' || 
+        (seenUser._id.toString() === userId.toString() && seenUser.fullName !== fullName)
       );
       
-      if (result.modifiedCount > 0) {
-        fixedCount++;
-        console.log(`✅ Fixed notification ${notification._id}`);
+      if (needsFix) {
+        console.log(`🔧 Fixing notification ${notification._id}`);
+        
+        // Update all seenBy entries for this user
+        const result = await Notification.updateMany(
+          {
+            _id: notification._id,
+            'seenBy._id': userId
+          },
+          {
+            $set: {
+              'seenBy.$.fullName': fullName
+            }
+          }
+        );
+        
+        if (result.modifiedCount > 0) {
+          fixedCount++;
+          console.log(`✅ Fixed notification ${notification._id}`);
+        }
       }
     }
     

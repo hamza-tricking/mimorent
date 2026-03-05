@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Notification = require('../models/notification.model');
+// const Notification = require('../models/notification.model');
 const auth = require('../middlewares/auth.middleware');
 
 console.log('Notification routes loaded successfully');
@@ -8,33 +8,11 @@ console.log('Notification routes loaded successfully');
 // Get all notifications for the logged-in admin
 router.get('/', auth, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-
-    // Use the correct user ID property
-    const userId = req.user._id || req.user.id;
-    console.log('Fetching notifications for user:', userId);
-
-    const notifications = await Notification.find({ userId })
-      .populate('reservationId', 'customerName customerPhone')
-      .populate('propertyId', 'title')
-      .populate('metadata.reminderId', 'message reminderType')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Notification.countDocuments({ userId });
-
+    // Temporary response to test if the route is working
     res.json({
       success: true,
-      data: notifications,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
+      data: [],
+      message: 'Notification routes are working!'
     });
   } catch (error) {
     console.error('Error fetching notifications:', error);

@@ -137,11 +137,7 @@ router.put('/:id/seen', auth, async (req, res) => {
       req.params.id,
       { 
         $addToSet: { 
-          seenBy: {
-            _id: userId,
-            username: req.user.username || req.user.name || 'Unknown',
-            fullName: fullName
-          }
+          seenBy: userId  // Only add the ObjectId, not the full user object
         }
       },
       { new: true }

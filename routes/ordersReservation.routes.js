@@ -64,18 +64,32 @@ router.get('/', auth, adminOnly, asyncHandler(async (req, res) => {
     if (wilayaId) filter.wilayaId = wilayaId;
     if (priority) filter.priority = priority;
 
-    // Execute query with pagination
+    // Execute query with pagination and populate property with isReserved field
     const orders = await OrdersReservation.find(filter)
-      .populate('propertyId', 'title location pricePerDay images')
+      .populate('propertyId', 'title location pricePerDay images isReserved')
       .populate('wilayaId', 'name')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
+    // Check and update orderType based on property isReserved status
+    const updatedOrders = await Promise.all(orders.map(async (order) => {
+      if (order.propertyId && order.propertyId.isReserved !== undefined) {
+        const expectedOrderType = order.propertyId.isReserved ? 'reserver_property' : 'notreserver_property';
+        
+        // Update order if orderType doesn't match property isReserved status
+        if (order.orderType !== expectedOrderType) {
+          order.orderType = expectedOrderType;
+          await order.save();
+        }
+      }
+      return order;
+    }));
+
     const total = await OrdersReservation.countDocuments(filter);
 
     sendSuccess(res, 'Orders retrieved successfully', {
-      orders,
+      orders: updatedOrders,
       pagination: {
         current: page,
         pages: Math.ceil(total / limit),
@@ -92,11 +106,22 @@ router.get('/', auth, adminOnly, asyncHandler(async (req, res) => {
 router.get('/:id', auth, adminOnly, asyncHandler(async (req, res) => {
   try {
     const order = await OrdersReservation.findById(req.params.id)
-      .populate('propertyId', 'title location pricePerDay images')
+      .populate('propertyId', 'title location pricePerDay images isReserved')
       .populate('wilayaId', 'name');
 
     if (!order) {
       return sendError(res, 'Order not found', 404);
+    }
+
+    // Check and update orderType based on property isReserved status
+    if (order.propertyId && order.propertyId.isReserved !== undefined) {
+      const expectedOrderType = order.propertyId.isReserved ? 'reserver_property' : 'notreserver_property';
+      
+      // Update order if orderType doesn't match property isReserved status
+      if (order.orderType !== expectedOrderType) {
+        order.orderType = expectedOrderType;
+        await order.save();
+      }
     }
 
     sendSuccess(res, 'Order retrieved successfully', { order });

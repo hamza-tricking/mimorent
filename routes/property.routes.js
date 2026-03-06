@@ -335,6 +335,10 @@ router.put('/:id',
             ? `${userData.firstName} ${userData.lastName}` 
             : userData?.username || userData?.name || 'System';
 
+          // Get the current reservation before clearing it
+          const currentReservation = await Property.findById(property._id)
+            .populate('reservationId', 'customerName customerPhone status startDate endDate totalPrice');
+
           // Create notification
           const notificationData = {
             type: 'property',
@@ -348,7 +352,17 @@ router.put('/:id',
               action: 'made_available',
               createdById: req.user._id,
               createdByName: creatorName,
-              createdAt: new Date()
+              createdAt: new Date(),
+              ...(currentReservation?.reservationId && {
+                previousReservation: {
+                  customerName: currentReservation.reservationId.customerName,
+                  customerPhone: currentReservation.reservationId.customerPhone,
+                  status: currentReservation.reservationId.status,
+                  startDate: currentReservation.reservationId.startDate,
+                  endDate: currentReservation.reservationId.endDate,
+                  totalPrice: currentReservation.reservationId.totalPrice
+                }
+              })
             }
           };
           
@@ -370,7 +384,17 @@ router.put('/:id',
               newStatus: 'available',
               createdById: req.user._id,
               createdByName: creatorName,
-              createdAt: new Date()
+              createdAt: new Date(),
+              ...(currentReservation?.reservationId && {
+                previousReservation: {
+                  customerName: currentReservation.reservationId.customerName,
+                  customerPhone: currentReservation.reservationId.customerPhone,
+                  status: currentReservation.reservationId.status,
+                  startDate: currentReservation.reservationId.startDate,
+                  endDate: currentReservation.reservationId.endDate,
+                  totalPrice: currentReservation.reservationId.totalPrice
+                }
+              })
             },
             ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
           };

@@ -364,6 +364,51 @@ router.put('/:id',
 
       await reservation.save();
 
+      // Create notification for reservation update
+      try {
+        const updatedProperty = await Property.findById(reservation.propertyId);
+        await Notification.create({
+          type: 'reservation',
+          title: 'تم تحديث الحجز',
+          message: `تم تحديث حجز العميل ${reservation.customerName} للعقار ${updatedProperty?.title || 'Unknown'}`,
+          reservationId: reservation._id,
+          propertyId: reservation.propertyId,
+          userId: req.user._id,
+          metadata: {
+            customerName: reservation.customerName,
+            propertyTitle: updatedProperty?.title || 'Unknown',
+            customerPhone: reservation.customerPhone,
+            startDate: reservation.startDate,
+            endDate: reservation.endDate,
+            totalPrice: reservation.totalPrice,
+            paymentStatus: reservation.paymentStatus,
+            status: reservation.status,
+            employerId: reservation.employerId,
+            createdById: req.user._id,
+            createdByName: req.user.firstName && req.user.lastName ? 
+              `${req.user.firstName} ${req.user.lastName}` : 
+              req.user.username || 'System',
+            createdAt: new Date(),
+            action: 'updated',
+            changes: {
+              customerName: customerName !== undefined,
+              customerPhone: customerPhone !== undefined,
+              startDate: startDate !== undefined,
+              endDate: endDate !== undefined,
+              totalPrice: totalPrice !== undefined,
+              paidAmount: paidAmount !== undefined,
+              remainingAmount: remainingAmount !== undefined,
+              paymentStatus: paymentStatus !== undefined,
+              status: status !== undefined
+            }
+          }
+        });
+        console.log('🔔 Notification created for reservation update:', reservation._id);
+      } catch (notificationError) {
+        console.error('Failed to create notification:', notificationError);
+        // Continue with reservation update even if notification fails
+      }
+
       // Log history entry for reservation update
       try {
         const updatedProperty = await Property.findById(reservation.propertyId);

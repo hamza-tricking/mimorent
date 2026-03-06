@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['reminder', 'reservation', 'system', 'alert', 'order'],
+    enum: ['reminder', 'reservation', 'system', 'alert', 'order', 'property'],
     default: 'reminder'
   },
   title: {

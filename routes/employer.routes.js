@@ -9,6 +9,7 @@ const Reservation = require('../models/reservation.model');
 const History = require('../models/history.model');
 const User = require('../models/user.model');
 const Wilaya = require('../models/wilaya.model');
+const Notification = require('../models/notification.model');
 const mongoose = require('mongoose');
 
 // GET /api/employer/wilaya/:wilayaId - Get wilaya info
@@ -195,6 +196,32 @@ router.post('/reservations',
       });
 
       await reservation.save();
+
+      // Create notification for new reservation
+      try {
+        await Notification.create({
+          type: 'reservation',
+          title: 'حجز جديد',
+          message: `تم إنشاء حجز جديد للعميل ${customerName} للعقار ${property.title}`,
+          reservationId: reservation._id,
+          propertyId: propertyId,
+          userId: req.user._id,
+          metadata: {
+            customerName: customerName,
+            propertyTitle: property.title,
+            customerPhone: customerPhone,
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
+            totalPrice: totalPrice,
+            paymentStatus: paymentStatus || 'pending',
+            employerId: employerId
+          }
+        });
+        console.log('🔔 Notification created for employer reservation:', reservation._id);
+      } catch (notificationError) {
+        console.error('Failed to create notification:', notificationError);
+        // Continue with reservation creation even if notification fails
+      }
 
       // Update property to mark as reserved
       await Property.findByIdAndUpdate(

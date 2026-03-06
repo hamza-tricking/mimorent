@@ -50,10 +50,27 @@ const notificationSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Reminder'
     },
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ordersReservation'
+    },
+    reservationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Reservation'
+    },
     customerName: String,
     propertyTitle: String,
+    customerPhone: String,
     reminderType: String,
-    reminderDateTime: Date
+    reminderDateTime: Date,
+    startDate: Date,
+    endDate: Date,
+    totalPrice: Number,
+    paymentStatus: String,
+    employerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
   },
   createdAt: {
     type: Date,

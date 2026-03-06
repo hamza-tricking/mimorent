@@ -8,6 +8,7 @@ const Reservation = require('../models/reservation.model');
 const Property = require('../models/property.model');
 const User = require('../models/user.model');
 const History = require('../models/history.model');
+const Notification = require('../models/notification.model');
 const { body, validationResult } = require('express-validator');
 
 // Validation rules for reservation creation
@@ -140,6 +141,31 @@ router.post('/',
       });
 
       await reservation.save();
+
+      // Create notification for new reservation
+      try {
+        await Notification.create({
+          type: 'reservation',
+          title: 'حجز جديد',
+          message: `تم إنشاء حجز جديد للعميل ${customerName} للعقار ${property.title}`,
+          reservationId: reservation._id,
+          propertyId: propertyId,
+          userId: req.user._id,
+          metadata: {
+            customerName: customerName,
+            propertyTitle: property.title,
+            customerPhone: customerPhone,
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
+            totalPrice: totalPrice,
+            paymentStatus: paymentStatus || 'pending'
+          }
+        });
+        console.log('🔔 Notification created for reservation:', reservation._id);
+      } catch (notificationError) {
+        console.error('Failed to create notification:', notificationError);
+        // Continue with reservation creation even if notification fails
+      }
 
       // Update property to mark as reserved
       await Property.findByIdAndUpdate(

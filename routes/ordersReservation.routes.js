@@ -181,7 +181,6 @@ router.post('/', auth, adminOnly, createOrderValidation, asyncHandler(async (req
 
     // Create notification for new order
     try {
-      console.log('here to check')
       await Notification.create({
         type: 'order',
         title: 'طلب حجز جديد',

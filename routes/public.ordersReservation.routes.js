@@ -5,6 +5,7 @@ const { asyncHandler } = require('../middlewares/error.middleware');
 const OrdersReservation = require('../models/ordersReservation.model');
 const Property = require('../models/property.model');
 const Wilaya = require('../models/wilaya.model');
+const Notification = require('../models/notification.model');
 const { body, validationResult } = require('express-validator');
 
 // Validation rules for order creation
@@ -87,6 +88,27 @@ router.post('/', createOrderValidation, asyncHandler(async (req, res) => {
     });
 
     await order.save();
+
+    // Create notification for new order
+    try {
+      console.log('Creating notification for order:', order._id);
+      await Notification.create({
+        type: 'order',
+        title: 'طلب حجز جديد',
+        message: `طلب حجز جديد من ${fullname} للعقار ${property.title}`,
+        orderId: order._id,
+        propertyId: propertyId,
+        metadata: {
+          customerName: fullname,
+          propertyTitle: property.title,
+          phoneNumber: phoneNumber
+        }
+      });
+      console.log('Notification created successfully');
+    } catch (notificationError) {
+      console.error('Failed to create notification:', notificationError);
+      // Continue with order creation even if notification fails
+    }
 
     // Populate references for response
     await order.populate('propertyId', 'title location pricePerDay images');

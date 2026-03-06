@@ -98,6 +98,15 @@ router.put('/:id/seen', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
+    // Validate userId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      console.error('Invalid userId format:', userId);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID format'
+      });
+    }
+    
     // CRITICAL: Clean up corrupted seenBy data using unset then set approach
     // Step 1: Remove all seenBy fields that contain string data
     await Notification.updateMany(
@@ -123,10 +132,20 @@ router.put('/:id/seen', auth, async (req, res) => {
       });
     }
     
-    // Ensure seenBy is an array
+    // Ensure seenBy is an array and contains valid ObjectIds
     if (!Array.isArray(notification.seenBy)) {
       await Notification.findByIdAndUpdate(req.params.id, { seenBy: [] });
       notification.seenBy = [];
+    } else {
+      // Filter out any invalid ObjectIds from seenBy array
+      const validSeenBy = notification.seenBy.filter(id => 
+        id && mongoose.Types.ObjectId.isValid(id.toString())
+      );
+      
+      if (validSeenBy.length !== notification.seenBy.length) {
+        await Notification.findByIdAndUpdate(req.params.id, { seenBy: validSeenBy });
+        notification.seenBy = validSeenBy;
+      }
     }
     
     // Check if user is already in seenBy
@@ -152,14 +171,15 @@ router.put('/:id/seen', auth, async (req, res) => {
       firstName: req.user.firstName,
       lastName: req.user.lastName,
       name: req.user.name,
-      calculatedFullName: fullName
+      calculatedFullName: fullName,
+      userId: userId
     });
     
     const updatedNotification = await Notification.findByIdAndUpdate(
       req.params.id,
       { 
         $addToSet: { 
-          seenBy: userId  // Only add the ObjectId, not the full user object
+          seenBy: new mongoose.Types.ObjectId(userId)  // Explicitly create ObjectId
         }
       },
       { new: true }
@@ -190,6 +210,36 @@ router.put('/:id/seen', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error marking notification as seen:', error);
+    
+    // If it's a cast error, try to clean up the data and retry
+    if (error.name === 'CastError' && error.message.includes('seenBy')) {
+      console.log('🔧 Attempting to fix corrupted seenBy data...');
+      
+      try {
+        // Clean up the specific notification
+        await Notification.findByIdAndUpdate(req.params.id, { seenBy: [] });
+        
+        // Retry the operation
+        const userId = req.user._id || req.user.id;
+        const updatedNotification = await Notification.findByIdAndUpdate(
+          req.params.id,
+          { 
+            $addToSet: { 
+              seenBy: new mongoose.Types.ObjectId(userId)
+            }
+          },
+          { new: true }
+        ).populate('seenBy', 'username fullName');
+
+        return res.json({
+          success: true,
+          data: updatedNotification
+        });
+      } catch (retryError) {
+        console.error('Retry failed:', retryError);
+      }
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Failed to mark notification as seen'

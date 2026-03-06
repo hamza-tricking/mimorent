@@ -163,8 +163,18 @@ router.put('/:id/seen', auth, async (req, res) => {
     }
     
     // Check if user is already in seenBy
+    // Ensure seenBy is an array and filter out invalid ObjectIds
+    if (!Array.isArray(notification.seenBy)) {
+      notification.seenBy = [];
+    } else {
+      // Filter out any invalid ObjectIds from seenBy array
+      notification.seenBy = notification.seenBy.filter(id => 
+        id && mongoose.Types.ObjectId.isValid(id.toString())
+      );
+    }
+    
     const alreadySeen = notification.seenBy.some(seenUserId => 
-      seenUserId.toString() === userId.toString()
+      seenUserId && seenUserId.toString() === userId.toString()
     );
     
     if (alreadySeen) {
@@ -191,7 +201,7 @@ router.put('/:id/seen', auth, async (req, res) => {
       { _id: req.params.id, propertyId: { $in: propertyIds } },
       { 
         $addToSet: { 
-          seenBy: userId  // Only add the ObjectId, not the full user object
+          seenBy: new mongoose.Types.ObjectId(userId)  // Explicitly create ObjectId
         }
       },
       { new: true }
@@ -249,7 +259,7 @@ router.put('/seen-all', auth, async (req, res) => {
       },
       { 
         $addToSet: { 
-          seenBy: userId  // Only add the ObjectId, not the full user object
+          seenBy: new mongoose.Types.ObjectId(userId)  // Explicitly create ObjectId
         }
       }
     );

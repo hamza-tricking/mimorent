@@ -19,6 +19,10 @@ const createPropertyValidation = [
     .notEmpty().withMessage('Description is required')
     .isLength({ max: 2000 }).withMessage('Description cannot exceed 2000 characters')
     .trim(),
+  body('location')
+    .notEmpty().withMessage('Location is required')
+    .isLength({ max: 500 }).withMessage('Location cannot exceed 500 characters')
+    .trim(),
   body('propertyType')
     .notEmpty().withMessage('Property type is required')
     .isIn(['home', 'villa', 'shop']).withMessage('Property type must be home, villa, or shop'),
@@ -62,6 +66,10 @@ const updatePropertyValidation = [
     .optional()
     .isLength({ max: 2000 }).withMessage('Description cannot exceed 2000 characters')
     .trim(),
+  body('location')
+    .optional()
+    .isLength({ max: 500 }).withMessage('Location cannot exceed 500 characters')
+    .trim(),
   body('propertyType')
     .optional()
     .isIn(['home', 'villa', 'shop']).withMessage('Property type must be home, villa, or shop'),
@@ -95,7 +103,7 @@ router.post('/',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, propertyType, pricePerDay, wilayaId, officeId, images, available } = req.body;
+      const { title, description, location, propertyType, pricePerDay, wilayaId, officeId, images, available } = req.body;
 
       // Check if wilaya exists
       const wilaya = await Wilaya.findById(wilayaId);
@@ -116,7 +124,8 @@ router.post('/',
 
       const property = new Property({ 
         title, 
-        description, 
+        description,
+        location,
         propertyType,
         pricePerDay, 
         wilayaId, 
@@ -235,7 +244,7 @@ router.put('/:id',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, propertyType, pricePerDay, wilayaId, officeId, images, available, isReserved } = req.body;
+      const { title, description, location, propertyType, pricePerDay, wilayaId, officeId, images, available, isReserved } = req.body;
       const propertyId = req.params.id;
 
       // Check if property exists
@@ -285,6 +294,7 @@ router.put('/:id',
       const updateData = {};
       if (title) updateData.title = title;
       if (description) updateData.description = description;
+      if (location) updateData.location = location;
       if (propertyType) updateData.propertyType = propertyType;
       if (pricePerDay) updateData.pricePerDay = pricePerDay;
       if (images) updateData.images = images;

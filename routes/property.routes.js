@@ -166,6 +166,12 @@ router.get('/',
       const wilayaId = req.query.wilayaId;
       const available = req.query.available;
 
+      // Migration: Ensure all properties have location field
+      await Property.updateMany(
+        { location: { $exists: false } },
+        { $set: { location: 'غير محدد' } }
+      );
+
       // Build filter object
       const filter = {};
       if (search) {

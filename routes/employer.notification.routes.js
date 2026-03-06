@@ -191,11 +191,7 @@ router.put('/:id/seen', auth, async (req, res) => {
       { _id: req.params.id, propertyId: { $in: propertyIds } },
       { 
         $addToSet: { 
-          seenBy: {
-            _id: userId,
-            username: req.user.username || req.user.name || 'Unknown',
-            fullName: fullName
-          }
+          seenBy: userId  // Only add the ObjectId, not the full user object
         }
       },
       { new: true }
@@ -249,15 +245,11 @@ router.put('/seen-all', auth, async (req, res) => {
     const result = await Notification.updateMany(
       { 
         propertyId: { $in: propertyIds },
-        'seenBy._id': { $ne: userId } // Only update notifications where user hasn't seen them yet
+        'seenBy': { $ne: userId } // Only update notifications where user hasn't seen them yet
       },
       { 
         $addToSet: { 
-          seenBy: {
-            _id: userId,
-            username: req.user.username || req.user.name || 'Unknown',
-            fullName: fullName
-          }
+          seenBy: userId  // Only add the ObjectId, not the full user object
         }
       }
     );

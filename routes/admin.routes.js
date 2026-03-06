@@ -899,4 +899,48 @@ router.get('/history/reservations',
   })
 );
 
+// GET /api/admin/history - Get all history records
+router.get('/history',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const action = req.query.action || '';
+      const entityType = req.query.entityType || '';
+
+      const skip = (page - 1) * limit;
+      
+      // Build query
+      const query = {};
+      if (action) query.action = action;
+      if (entityType) query.entityType = entityType;
+      
+      const history = await History.find(query)
+        .populate('userId', 'username firstName lastName email')
+        .populate('reservationId', 'customerName customerPhone totalPrice status')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+      
+      const total = await History.countDocuments(query);
+      
+      const result = {
+        history,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      };
+
+      sendSuccess(res, 'History retrieved successfully', result);
+    } catch (error) {
+      sendError(res, 'Failed to retrieve history', error);
+    }
+  })
+);
+
 module.exports = router;

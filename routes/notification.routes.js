@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Notification = require('../models/notification.model');
 const auth = require('../middlewares/auth.middleware');
+const mongoose = require('mongoose');
 
 console.log('Notification routes loaded successfully');
 
@@ -97,10 +98,22 @@ router.put('/:id/seen', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // First, clean up any corrupted seenBy entries (strings instead of ObjectIds)
+    // First, clean up ALL corrupted seenBy entries (any non-ObjectId values)
+    await Notification.updateMany(
+      {}, 
+      { 
+        $pull: { 
+          seenBy: { 
+            $not: { $type: mongoose.Types.ObjectId } 
+          } 
+        } 
+      }
+    );
+    
+    // Also clean up notifications where seenBy is a string instead of array
     await Notification.updateMany(
       { 'seenBy': { $type: 'string' } },
-      { $pull: { seenBy: { $type: 'string' } } }
+      { $unset: { seenBy: 1 } }
     );
     
     // First get the notification to check if user is already in seenBy
@@ -113,9 +126,15 @@ router.put('/:id/seen', auth, async (req, res) => {
       });
     }
     
+    // Ensure seenBy is an array
+    if (!Array.isArray(notification.seenBy)) {
+      await Notification.findByIdAndUpdate(req.params.id, { seenBy: [] });
+      notification.seenBy = [];
+    }
+    
     // Check if user is already in seenBy
     const alreadySeen = notification.seenBy.some(seenUserId => 
-      seenUserId.toString() === userId.toString()
+      seenUserId && seenUserId.toString() === userId.toString()
     );
     
     if (alreadySeen) {

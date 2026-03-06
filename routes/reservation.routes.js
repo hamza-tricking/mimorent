@@ -192,10 +192,13 @@ router.post('/',
         // Continue with reservation creation even if notification fails
       }
 
-      // Update property to mark as reserved
+      // Update property to mark as reserved and link reservation
       await Property.findByIdAndUpdate(
         propertyId,
-        { isReserved: true },
+        { 
+          isReserved: true,
+          reservationId: reservation._id
+        },
         { new: true }
       );
 

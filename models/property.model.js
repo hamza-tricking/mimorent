@@ -94,6 +94,10 @@ const propertySchema = new mongoose.Schema({
   isReserved: {
     type: Boolean,
     default: false
+  },
+  reservationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Reservation'
   }
 }, {
   timestamps: true,

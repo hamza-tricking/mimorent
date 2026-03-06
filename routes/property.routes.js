@@ -190,7 +190,8 @@ router.get('/',
       const properties = await Property.find(filter)
         .populate([
           { path: 'wilayaId', select: 'name code' },
-          { path: 'officeId', select: 'name code' }
+          { path: 'officeId', select: 'name code' },
+          { path: 'reservationId', select: 'customerName customerPhone status startDate endDate totalPrice' }
         ])
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -223,7 +224,8 @@ router.get('/:id',
       const property = await Property.findById(req.params.id)
         .populate([
           { path: 'wilayaId', select: 'name code' },
-          { path: 'officeId', select: 'name code' }
+          { path: 'officeId', select: 'name code' },
+          { path: 'reservationId', select: 'customerName customerPhone status startDate endDate totalPrice' }
         ]);
       
       if (!property) {
@@ -259,17 +261,8 @@ router.put('/:id',
         return sendError(res, 'Property not found', 404);
       }
 
-      // If making property available (isReserved: false), cancel all active reservations
-      if (isReserved === false) {
-        const Reservation = require('../models/reservation.model');
-        await Reservation.updateMany(
-          { 
-            propertyId: propertyId,
-            status: { $in: ['pending', 'confirmed', 'approved'] }
-          },
-          { status: 'cancelled' }
-        );
-      }
+      // If making property available (isReserved: false), just update the property status
+      // Reservations should remain unchanged - they will be handled separately
 
       // Check if wilaya exists (if provided)
       if (wilayaId) {
@@ -305,7 +298,13 @@ router.put('/:id',
       if (pricePerDay) updateData.pricePerDay = pricePerDay;
       if (images) updateData.images = images;
       if (available !== undefined) updateData.available = available;
-      if (isReserved !== undefined) updateData.isReserved = isReserved;
+      if (isReserved !== undefined) {
+        updateData.isReserved = isReserved;
+        // If making property available, clear the reservationId
+        if (isReserved === false) {
+          updateData.reservationId = null;
+        }
+      }
 
       await Property.updateOne(
         { _id: property._id },
@@ -319,7 +318,8 @@ router.put('/:id',
       // Populate wilaya and office info for response
       await updatedProperty.populate([
         { path: 'wilayaId', select: 'name code' },
-        { path: 'officeId', select: 'name code' }
+        { path: 'officeId', select: 'name code' },
+        { path: 'reservationId', select: 'customerName customerPhone status startDate endDate totalPrice' }
       ]);
 
       // Create notification when property is made available
@@ -348,8 +348,7 @@ router.put('/:id',
               action: 'made_available',
               createdById: req.user._id,
               createdByName: creatorName,
-              createdAt: new Date(),
-              cancelledReservations: true
+              createdAt: new Date()
             }
           };
           
@@ -362,12 +361,11 @@ router.put('/:id',
             entityType: 'property',
             entityId: updatedProperty._id,
             userId: req.user._id,
-            description: `تم جعل العقار "${updatedProperty.title}" متاحاً للحجز مع إلغاء جميع الحجوزات النشطة`,
+            description: `تم جعل العقار "${updatedProperty.title}" متاحاً للحجز`,
             metadata: {
               propertyTitle: updatedProperty.title,
               propertyId: updatedProperty._id,
               action: 'made_available',
-              cancelledReservations: true,
               previousStatus: 'reserved',
               newStatus: 'available',
               createdById: req.user._id,

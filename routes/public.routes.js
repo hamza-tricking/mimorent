@@ -6,6 +6,8 @@ const Property = require('../models/property.model');
 const Wilaya = require('../models/wilaya.model');
 const Reservation = require('../models/reservation.model');
 const OrdersReservation = require('../models/ordersReservation.model');
+const Notification = require('../models/notification.model');
+console.log('🔔 Notification model loaded in public.routes.js');
 const { body, validationResult } = require('express-validator');
 
 // Validation rules for order creation
@@ -109,7 +111,34 @@ router.post('/orders-reservation', createOrderValidation, asyncHandler(async (re
     console.log('🔍 Created order object:', order);
 
     await order.save();
-    console.log('✅ Order saved to database');
+    console.log('✅ Order saved to database, attempting to create notification...');
+
+    // Create notification for new order
+    try {
+      console.log('Creating notification for order:', order._id);
+      console.log('Notification model available:', !!Notification);
+      
+      const notificationData = {
+        type: 'order',
+        title: 'طلب حجز جديد',
+        message: `طلب حجز جديد من ${fullname} للعقار ${property.title}`,
+        orderId: order._id,
+        propertyId: propertyId,
+        metadata: {
+          customerName: fullname,
+          propertyTitle: property.title,
+          phoneNumber: phoneNumber
+        }
+      };
+      console.log('Notification data:', notificationData);
+      
+      await Notification.create(notificationData);
+      console.log('✅ Notification created successfully');
+    } catch (notificationError) {
+      console.error('❌ Failed to create notification:', notificationError);
+      console.error('❌ Error stack:', notificationError.stack);
+      // Continue with order creation even if notification fails
+    }
 
     // Populate references for response
     await order.populate('propertyId', 'title location pricePerDay images');

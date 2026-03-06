@@ -314,6 +314,13 @@ router.put('/:id',
           ...(isReserved === false && { reservationId: null }) // Clear reservationId when making property available
         }
       );
+
+      // Get the updated property with populated data
+      const updatedProperty = await Property.findById(property._id)
+        .populate('wilayaId', 'name')
+        .populate('officeId', 'name')
+        .populate('reservationId', 'customerName customerPhone status startDate endDate totalPrice');
+
       // Create notification when property is made available
       if (isReserved === false) {
         try {

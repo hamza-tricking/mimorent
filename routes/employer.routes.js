@@ -214,7 +214,12 @@ router.post('/reservations',
             endDate: new Date(endDate),
             totalPrice: totalPrice,
             paymentStatus: paymentStatus || 'pending',
-            employerId: employerId
+            employerId: employerId,
+            createdById: req.user._id,
+            createdByName: req.user.firstName && req.user.lastName ? 
+              `${req.user.firstName} ${req.user.lastName}` : 
+              req.user.username || 'System',
+            createdAt: new Date()
           }
         });
         console.log('🔔 Notification created for employer reservation:', reservation._id);

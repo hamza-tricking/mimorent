@@ -97,6 +97,12 @@ router.put('/:id/seen', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
+    // First, clean up any corrupted seenBy entries (strings instead of ObjectIds)
+    await Notification.updateMany(
+      { 'seenBy': { $type: 'string' } },
+      { $pull: { seenBy: { $type: 'string' } } }
+    );
+    
     // First get the notification to check if user is already in seenBy
     const notification = await Notification.findById(req.params.id);
     

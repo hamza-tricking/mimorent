@@ -142,6 +142,8 @@ router.post('/',
 
       await reservation.save();
 
+      console.log('🟢 ABOUT TO CREATE NOTIFICATION FOR RESERVATION:', reservation._id);
+
       // Create notification for new reservation
       try {
         // Debug: Log user object

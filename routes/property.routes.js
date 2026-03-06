@@ -327,6 +327,7 @@ router.put('/:id',
         try {
           const Notification = require('../models/notification.model');
           const User = require('../models/user.model');
+          const History = require('../models/history.model');
           
           // Fetch user data to get proper name
           const userData = await User.findById(req.user._id);
@@ -334,6 +335,7 @@ router.put('/:id',
             ? `${userData.firstName} ${userData.lastName}` 
             : userData?.username || userData?.name || 'System';
 
+          // Create notification
           const notificationData = {
             type: 'property',
             title: 'العقار أصبح متاحاً',
@@ -353,8 +355,33 @@ router.put('/:id',
           
           await Notification.create(notificationData);
           console.log('🔔 Notification created for property availability:', updatedProperty._id);
+
+          // Create history record
+          const historyData = {
+            action: 'property_updated',
+            entityType: 'property',
+            entityId: updatedProperty._id,
+            userId: req.user._id,
+            description: `تم جعل العقار "${updatedProperty.title}" متاحاً للحجز مع إلغاء جميع الحجوزات النشطة`,
+            metadata: {
+              propertyTitle: updatedProperty.title,
+              propertyId: updatedProperty._id,
+              action: 'made_available',
+              cancelledReservations: true,
+              previousStatus: 'reserved',
+              newStatus: 'available',
+              createdById: req.user._id,
+              createdByName: creatorName,
+              createdAt: new Date()
+            },
+            ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
+          };
+
+          await History.create(historyData);
+          console.log('📝 History record created for property availability:', updatedProperty._id);
+
         } catch (notificationError) {
-          console.error('Failed to create notification:', notificationError);
+          console.error('Failed to create notification/history:', notificationError);
           // Continue with property update even if notification fails
         }
       }

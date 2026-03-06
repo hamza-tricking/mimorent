@@ -199,6 +199,12 @@ router.post('/reservations',
 
       // Create notification for new reservation
       try {
+        // Fetch user data to get proper name
+        const userData = await User.findById(req.user._id);
+        const creatorName = userData?.firstName && userData?.lastName 
+          ? `${userData.firstName} ${userData.lastName}` 
+          : userData?.username || userData?.name || 'System';
+        
         await Notification.create({
           type: 'reservation',
           title: 'حجز جديد',
@@ -216,9 +222,7 @@ router.post('/reservations',
             paymentStatus: paymentStatus || 'pending',
             employerId: employerId,
             createdById: req.user._id,
-            createdByName: req.user.firstName && req.user.lastName ? 
-              `${req.user.firstName} ${req.user.lastName}` : 
-              req.user.username || 'System',
+            createdByName: creatorName,
             createdAt: new Date()
           }
         });
@@ -326,6 +330,13 @@ router.put('/reservations/:id',
       // Create notification for reservation update
       try {
         const updatedProperty = await Property.findById(reservation.propertyId);
+        
+        // Fetch user data to get proper name
+        const userData = await User.findById(req.user._id);
+        const creatorName = userData?.firstName && userData?.lastName 
+          ? `${userData.firstName} ${userData.lastName}` 
+          : userData?.username || userData?.name || 'System';
+        
         await Notification.create({
           type: 'reservation',
           title: 'تم تحديث الحجز',
@@ -344,9 +355,7 @@ router.put('/reservations/:id',
             status: reservation.status,
             employerId: reservation.employerId,
             createdById: req.user._id,
-            createdByName: req.user.firstName && req.user.lastName ? 
-              `${req.user.firstName} ${req.user.lastName}` : 
-              req.user.username || 'System',
+            createdByName: creatorName,
             createdAt: new Date(),
             action: 'updated',
             changes: {

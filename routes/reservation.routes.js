@@ -144,11 +144,19 @@ router.post('/',
 
       // Create notification for new reservation
       try {
+        // Debug: Log user object
+        console.log('🔍 User object from req.user:', JSON.stringify(req.user, null, 2));
+        console.log('🔍 User ID:', req.user._id);
+        
         // Fetch user data to get proper name
         const userData = await User.findById(req.user._id);
+        console.log('🔍 Fetched user data:', userData);
+        
         const creatorName = userData?.firstName && userData?.lastName 
           ? `${userData.firstName} ${userData.lastName}` 
           : userData?.username || userData?.name || 'System';
+          
+        console.log('🔍 Creator name determined:', creatorName);
         
         await Notification.create({
           type: 'reservation',

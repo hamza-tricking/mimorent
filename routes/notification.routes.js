@@ -98,13 +98,20 @@ router.put('/:id/seen', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // CRITICAL: Reset all seenBy arrays to empty arrays to avoid any corrupted data
+    // CRITICAL: Clean up corrupted seenBy data using unset then set approach
+    // Step 1: Remove all seenBy fields that contain string data
     await Notification.updateMany(
-      {}, 
+      { 'seenBy': { $type: 'string' } },
+      { $unset: { seenBy: 1 } }
+    );
+    
+    // Step 2: Add empty seenBy arrays to notifications that don't have it
+    await Notification.updateMany(
+      { seenBy: { $exists: false } },
       { $set: { seenBy: [] } }
     );
     
-    console.log('🧹 Reset all seenBy arrays to empty');
+    console.log('🧹 Cleaned up corrupted seenBy data');
     
     // First get the notification to check if user is already in seenBy
     const notification = await Notification.findById(req.params.id);

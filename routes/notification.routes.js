@@ -98,23 +98,13 @@ router.put('/:id/seen', auth, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
     
-    // First, clean up ALL corrupted seenBy entries (any non-ObjectId values)
+    // CRITICAL: Reset all seenBy arrays to empty arrays to avoid any corrupted data
     await Notification.updateMany(
       {}, 
-      { 
-        $pull: { 
-          seenBy: { 
-            $not: { $type: mongoose.Types.ObjectId } 
-          } 
-        } 
-      }
+      { $set: { seenBy: [] } }
     );
     
-    // Also clean up notifications where seenBy is a string instead of array
-    await Notification.updateMany(
-      { 'seenBy': { $type: 'string' } },
-      { $unset: { seenBy: 1 } }
-    );
+    console.log('🧹 Reset all seenBy arrays to empty');
     
     // First get the notification to check if user is already in seenBy
     const notification = await Notification.findById(req.params.id);

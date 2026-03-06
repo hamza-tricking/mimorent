@@ -297,31 +297,23 @@ router.put('/:id',
       if (propertyType) updateData.propertyType = propertyType;
       if (pricePerDay) updateData.pricePerDay = pricePerDay;
       if (images) updateData.images = images;
-      if (available !== undefined) updateData.available = available;
-      if (isReserved !== undefined) {
-        updateData.isReserved = isReserved;
-        // If making property available, clear the reservationId
-        if (isReserved === false) {
-          updateData.reservationId = null;
-        }
-      }
 
-      await Property.updateOne(
+      // Get the current reservation before updating the property
+      const existingProperty = await Property.findById(property._id)
+        .populate('reservationId', 'customerName customerPhone status startDate endDate totalPrice');
+
+      console.log('🔍 Existing Property:', existingProperty);
+      console.log('🔍 Existing Reservation ID:', existingProperty?.reservationId);
+      console.log('🔍 Existing Reservation Details:', existingProperty?.reservationId);
+
+      // Update the property
+      const result = await Property.updateOne(
         { _id: property._id },
-        updateData,
-        { runValidators: false }
+        { 
+          $set: updateData,
+          ...(isReserved === false && { reservationId: null }) // Clear reservationId when making property available
+        }
       );
-
-      // Get the updated property
-      const updatedProperty = await Property.findById(property._id);
-
-      // Populate wilaya and office info for response
-      await updatedProperty.populate([
-        { path: 'wilayaId', select: 'name code' },
-        { path: 'officeId', select: 'name code' },
-        { path: 'reservationId', select: 'customerName customerPhone status startDate endDate totalPrice' }
-      ]);
-
       // Create notification when property is made available
       if (isReserved === false) {
         try {
@@ -335,9 +327,7 @@ router.put('/:id',
             ? `${userData.firstName} ${userData.lastName}` 
             : userData?.username || userData?.name || 'System';
 
-          // Get the current reservation before clearing it
-          const currentReservation = await Property.findById(property._id)
-            .populate('reservationId', 'customerName customerPhone status startDate endDate totalPrice');
+          console.log('🔍 Using Existing Reservation:', existingProperty?.reservationId);
 
           // Create notification
           const notificationData = {
@@ -353,18 +343,20 @@ router.put('/:id',
               createdById: req.user._id,
               createdByName: creatorName,
               createdAt: new Date(),
-              ...(currentReservation?.reservationId && {
+              ...(existingProperty?.reservationId && {
                 previousReservation: {
-                  customerName: currentReservation.reservationId.customerName,
-                  customerPhone: currentReservation.reservationId.customerPhone,
-                  status: currentReservation.reservationId.status,
-                  startDate: currentReservation.reservationId.startDate,
-                  endDate: currentReservation.reservationId.endDate,
-                  totalPrice: currentReservation.reservationId.totalPrice
+                  customerName: existingProperty.reservationId.customerName,
+                  customerPhone: existingProperty.reservationId.customerPhone,
+                  status: existingProperty.reservationId.status,
+                  startDate: existingProperty.reservationId.startDate,
+                  endDate: existingProperty.reservationId.endDate,
+                  totalPrice: existingProperty.reservationId.totalPrice
                 }
               })
             }
           };
+          
+          console.log('🔍 Notification Metadata:', notificationData.metadata);
           
           await Notification.create(notificationData);
           console.log('🔔 Notification created for property availability:', updatedProperty._id);
@@ -385,14 +377,14 @@ router.put('/:id',
               createdById: req.user._id,
               createdByName: creatorName,
               createdAt: new Date(),
-              ...(currentReservation?.reservationId && {
+              ...(existingProperty?.reservationId && {
                 previousReservation: {
-                  customerName: currentReservation.reservationId.customerName,
-                  customerPhone: currentReservation.reservationId.customerPhone,
-                  status: currentReservation.reservationId.status,
-                  startDate: currentReservation.reservationId.startDate,
-                  endDate: currentReservation.reservationId.endDate,
-                  totalPrice: currentReservation.reservationId.totalPrice
+                  customerName: existingProperty.reservationId.customerName,
+                  customerPhone: existingProperty.reservationId.customerPhone,
+                  status: existingProperty.reservationId.status,
+                  startDate: existingProperty.reservationId.startDate,
+                  endDate: existingProperty.reservationId.endDate,
+                  totalPrice: existingProperty.reservationId.totalPrice
                 }
               })
             },

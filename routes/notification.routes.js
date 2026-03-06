@@ -170,19 +170,6 @@ router.put('/:id/seen', auth, async (req, res) => {
       { new: true }
     );
 
-    // Update existing seenBy entries that have undefined fullName
-    await Notification.updateMany(
-      {
-        _id: req.params.id,
-        'seenBy.fullName': 'undefined undefined'
-      },
-      {
-        $set: {
-          'seenBy.$.fullName': fullName
-        }
-      }
-    );
-
     // Manually populate seenBy with user data
     const populatedNotification = await Notification.findById(req.params.id)
       .populate('seenBy', 'username fullName');

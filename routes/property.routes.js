@@ -322,6 +322,43 @@ router.put('/:id',
         { path: 'officeId', select: 'name code' }
       ]);
 
+      // Create notification when property is made available
+      if (isReserved === false) {
+        try {
+          const Notification = require('../models/notification.model');
+          const User = require('../models/user.model');
+          
+          // Fetch user data to get proper name
+          const userData = await User.findById(req.user._id);
+          const creatorName = userData?.firstName && userData?.lastName 
+            ? `${userData.firstName} ${userData.lastName}` 
+            : userData?.username || userData?.name || 'System';
+
+          const notificationData = {
+            type: 'property',
+            title: 'العقار أصبح متاحاً',
+            message: `تم جعل العقار "${updatedProperty.title}" متاحاً للحجز`,
+            propertyId: updatedProperty._id,
+            userId: req.user._id,
+            metadata: {
+              propertyTitle: updatedProperty.title,
+              propertyId: updatedProperty._id,
+              action: 'made_available',
+              createdById: req.user._id,
+              createdByName: creatorName,
+              createdAt: new Date(),
+              cancelledReservations: true
+            }
+          };
+          
+          await Notification.create(notificationData);
+          console.log('🔔 Notification created for property availability:', updatedProperty._id);
+        } catch (notificationError) {
+          console.error('Failed to create notification:', notificationError);
+          // Continue with property update even if notification fails
+        }
+      }
+
       sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
     } catch (error) {
       console.error('Property update error:', error);

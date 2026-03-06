@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['reminder', 'reservation', 'system', 'alert'],
+    enum: ['reminder', 'reservation', 'system', 'alert', 'order'],
     default: 'reminder'
   },
   title: {
@@ -18,8 +18,11 @@ const notificationSchema = new mongoose.Schema({
   },
   reservationId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Reservation',
-    required: true
+    ref: 'Reservation'
+  },
+  orderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ordersReservation'
   },
   propertyId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -28,8 +31,7 @@ const notificationSchema = new mongoose.Schema({
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: 'User'
   },
   read: {
     type: Boolean,
@@ -85,6 +87,11 @@ notificationSchema.methods.markAsRead = async function() {
 // Static method to find unread notifications for a user
 notificationSchema.statics.findUnreadForUser = function(userId) {
   return this.find({ userId, read: false }).sort({ createdAt: -1 });
+};
+
+// Static method to find order notifications (for admin dashboard)
+notificationSchema.statics.findOrderNotifications = function() {
+  return this.find({ type: 'order' }).sort({ createdAt: -1 });
 };
 
 // Static method to get notification statistics

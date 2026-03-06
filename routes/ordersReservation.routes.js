@@ -8,6 +8,7 @@ const OrdersReservation = require('../models/ordersReservation.model');
 const Property = require('../models/property.model');
 const Wilaya = require('../models/wilaya.model');
 const History = require('../models/history.model');
+const Notification = require('../models/notification.model');
 const { body, validationResult } = require('express-validator');
 
 // Validation rules for order creation
@@ -177,6 +178,25 @@ router.post('/', auth, adminOnly, createOrderValidation, asyncHandler(async (req
     });
 
     await order.save();
+
+    // Create notification for new order
+    try {
+      await Notification.create({
+        type: 'order',
+        title: 'طلب حجز جديد',
+        message: `طلب حجز جديد من ${fullname} للعقار ${property.title}`,
+        orderId: order._id,
+        propertyId: propertyId,
+        metadata: {
+          customerName: fullname,
+          propertyTitle: property.title,
+          phoneNumber: phoneNumber
+        }
+      });
+    } catch (notificationError) {
+      console.error('Failed to create notification:', notificationError);
+      // Continue with order creation even if notification fails
+    }
 
     // Populate references for response
     await order.populate('propertyId', 'title location pricePerDay images');

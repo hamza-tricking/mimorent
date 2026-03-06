@@ -158,7 +158,7 @@ router.post('/',
           
         console.log('🔍 Creator name determined:', creatorName);
         
-        await Notification.create({
+        const notificationData = {
           type: 'reservation',
           title: 'حجز جديد',
           message: `تم إنشاء حجز جديد للعميل ${customerName} للعقار ${property.title}`,
@@ -178,7 +178,12 @@ router.post('/',
             createdByName: creatorName,
             createdAt: new Date()
           }
-        });
+        };
+        
+        console.log('🔍 Full notification data being saved:', JSON.stringify(notificationData, null, 2));
+        
+        const savedNotification = await Notification.create(notificationData);
+        console.log('🔍 Saved notification from database:', JSON.stringify(savedNotification, null, 2));
         console.log('🔔 Notification created for reservation:', reservation._id);
       } catch (notificationError) {
         console.error('Failed to create notification:', notificationError);

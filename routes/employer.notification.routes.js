@@ -255,7 +255,7 @@ router.put('/seen-all', auth, async (req, res) => {
     const result = await Notification.updateMany(
       { 
         propertyId: { $in: propertyIds },
-        'seenBy': { $ne: userId } // Only update notifications where user hasn't seen them yet
+        'seenBy': { $ne: new mongoose.Types.ObjectId(userId) } // Only update notifications where user hasn't seen them yet
       },
       { 
         $addToSet: { 

@@ -47,12 +47,19 @@ router.get('/', auth, async (req, res) => {
     
     const propertyIds = officeProperties.map(p => p._id);
     console.log('Properties in employer office:', propertyIds.length);
+    console.log('🔍 Property IDs being checked:', propertyIds);
+
+    // DEBUG: Check all notification types for these properties
+    const allNotifications = await Notification.find({
+      propertyId: { $in: propertyIds }
+    }).select('type title propertyId metadata');
+    console.log('🔍 ALL notifications for these properties:', allNotifications.map(n => ({ id: n._id, type: n.type, title: n.title, hasReminderId: !!n.metadata?.reminderId })));
 
     // Fetch notifications related to properties in employer's office only
     // Filter for order and reminder notifications (not admin notifications)
     const notifications = await Notification.find({
       propertyId: { $in: propertyIds },
-      type: { $in: ['order', 'reminders'] } // Show both order and reminder notifications to employers
+      type: { $in: ['order', 'reminder'] } // Show both order and reminder notifications to employers
     })
       .populate('reservationId', 'customerName customerPhone')
       .populate('propertyId', 'title wilayaId officeId')
@@ -64,10 +71,11 @@ router.get('/', auth, async (req, res) => {
 
     const total = await Notification.countDocuments({
       propertyId: { $in: propertyIds },
-      type: { $in: ['order', 'reminders'] } // Count both order and reminder notifications
+      type: { $in: ['order', 'reminder'] } // Count both order and reminder notifications
     });
 
     console.log('Found notifications for employer office:', notifications.length);
+    console.log('🔍 Notification types being sent to employer:', notifications.map(n => ({ id: n._id, type: n.type, title: n.title })));
 
     res.json({
       success: true,
@@ -115,7 +123,7 @@ router.get('/unread-count', auth, async (req, res) => {
     const unreadCount = await Notification.countDocuments({ 
       propertyId: { $in: propertyIds },
       read: false,
-      type: { $in: ['order', 'reminders'] } // Count both order and reminder notifications
+      type: { $in: ['order', 'reminder'] } // Count both order and reminder notifications
     });
 
     res.json({

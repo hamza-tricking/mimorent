@@ -59,7 +59,11 @@ router.get('/', auth, async (req, res) => {
     // Filter for order and reminder notifications (not admin notifications)
     const notifications = await Notification.find({
       propertyId: { $in: propertyIds },
-      type: { $in: ['order', 'reminder'] } // Show both order and reminder notifications to employers
+      type: { $in: ['order', 'reminder'] }, // Show both order and reminder notifications to employers
+      $or: [
+        { userId: req.user._id }, // Notifications specifically for this user
+        { userId: { $exists: false } } // Notifications not assigned to a specific user (like order notifications)
+      ]
     })
       .populate('reservationId', 'customerName customerPhone')
       .populate('propertyId', 'title wilayaId officeId')
@@ -71,11 +75,16 @@ router.get('/', auth, async (req, res) => {
 
     const total = await Notification.countDocuments({
       propertyId: { $in: propertyIds },
-      type: { $in: ['order', 'reminder'] } // Count both order and reminder notifications
+      type: { $in: ['order', 'reminder'] }, // Count both order and reminder notifications
+      $or: [
+        { userId: req.user._id }, // Notifications specifically for this user
+        { userId: { $exists: false } } // Notifications not assigned to a specific user (like order notifications)
+      ]
     });
 
     console.log('Found notifications for employer office:', notifications.length);
-    console.log('🔍 Notification types being sent to employer:', notifications.map(n => ({ id: n._id, type: n.type, title: n.title })));
+    console.log('🔍 Current user ID:', req.user._id);
+    console.log('🔍 Notification types being sent to employer:', notifications.map(n => ({ id: n._id, type: n.type, title: n.title, userId: n.userId })));
 
     res.json({
       success: true,
@@ -123,7 +132,11 @@ router.get('/unread-count', auth, async (req, res) => {
     const unreadCount = await Notification.countDocuments({ 
       propertyId: { $in: propertyIds },
       read: false,
-      type: { $in: ['order', 'reminder'] } // Count both order and reminder notifications
+      type: { $in: ['order', 'reminder'] }, // Count both order and reminder notifications
+      $or: [
+        { userId: req.user._id }, // Notifications specifically for this user
+        { userId: { $exists: false } } // Notifications not assigned to a specific user (like order notifications)
+      ]
     });
 
     res.json({

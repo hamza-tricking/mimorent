@@ -298,6 +298,14 @@ router.put('/:id',
       if (pricePerDay) updateData.pricePerDay = pricePerDay;
       if (images) updateData.images = images;
       if (available !== undefined) updateData.available = available;
+      
+      // Get current reservation data before updating if making property available
+      let currentReservation = null;
+      if (isReserved === false && property.reservationId) {
+        currentReservation = await Property.findById(property._id)
+          .populate('reservationId', 'customerName customerPhone status startDate endDate totalPrice paidAmount remainingAmount paymentStatus');
+      }
+      
       if (isReserved !== undefined) {
         updateData.isReserved = isReserved;
         // If making property available, clear the reservationId
@@ -334,10 +342,6 @@ router.put('/:id',
           const creatorName = userData?.firstName && userData?.lastName 
             ? `${userData.firstName} ${userData.lastName}` 
             : userData?.username || userData?.name || 'System';
-
-          // Get the current reservation before clearing it
-          const currentReservation = await Property.findById(property._id)
-            .populate('reservationId', 'customerName customerPhone status startDate endDate totalPrice');
 
           // Create notification
           const notificationData = {

@@ -103,6 +103,64 @@ router.get('/', auth, adminOnly, asyncHandler(async (req, res) => {
   }
 }));
 
+// GET /api/admin/orders-reservation/employer - Get orders for employer
+router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
+  try {
+    const { page = 1, limit = 50, status, orderType, priority } = req.query;
+    
+    // Get employer's office and wilaya
+    const Office = require('../models/office.model');
+    const employerOffice = await Office.findById(req.user.officeId);
+    
+    if (!employerOffice) {
+      return sendError(res, 'Employer office not found', 404);
+    }
+
+    // Build filter - only show orders from employer's wilaya
+    const filter = { wilayaId: employerOffice.wilayaId };
+    if (status) filter.status = status;
+    if (orderType) filter.orderType = orderType;
+    if (priority) filter.priority = priority;
+
+    // Execute query with pagination and populate property with isReserved field
+    const orders = await OrdersReservation.find(filter)
+      .populate('propertyId', 'title location pricePerDay images isReserved')
+      .populate('wilayaId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    // Check and update orderType based on property isReserved status
+    const updatedOrders = await Promise.all(orders.map(async (order) => {
+      if (order.propertyId && order.propertyId.isReserved !== undefined) {
+        const expectedOrderType = order.propertyId.isReserved ? 'reserver_property' : 'notreserver_property';
+        
+        // Update order if orderType doesn't match property isReserved status
+        if (order.orderType !== expectedOrderType) {
+          order.orderType = expectedOrderType;
+          await order.save();
+        }
+      }
+      return order;
+    }));
+
+    const total = await OrdersReservation.countDocuments(filter);
+
+    sendSuccess(res, 'Orders retrieved successfully', {
+      data: updatedOrders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get employer orders error:', error);
+    sendError(res, 'Failed to retrieve orders', 500);
+  }
+}));
+
 // GET /api/admin/orders-reservation/:id - Get single order by ID
 router.get('/:id', auth, adminOnly, asyncHandler(async (req, res) => {
   try {

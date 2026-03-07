@@ -90,8 +90,19 @@ router.put('/properties/:id',
         updateData.available = available;
       }
       
+      // Get current reservation data before updating if making property available
+      let currentReservation = null;
+      if (isReserved === false && property.reservationId) {
+        currentReservation = await Property.findById(property._id)
+          .populate('reservationId', 'customerName customerPhone status startDate endDate totalPrice paidAmount remainingAmount paymentStatus');
+      }
+      
       if (isReserved !== undefined) {
         updateData.isReserved = isReserved;
+        // If making property available, clear the reservationId
+        if (isReserved === false) {
+          updateData.reservationId = null;
+        }
       }
 
       console.log('🟡 BACKEND: Update data to apply:', updateData); // Debug log
@@ -115,6 +126,110 @@ router.put('/properties/:id',
           available: updatedProperty.available,
           isReserved: updatedProperty.isReserved
         }); // Debug log
+
+        // Create notification and history when property is made available
+        if (isReserved === false) {
+          try {
+            const Notification = require('../models/notification.model');
+            const User = require('../models/user.model');
+            const History = require('../models/history.model');
+            
+            // Fetch user data to get proper name
+            const userData = await User.findById(req.user._id);
+            const creatorName = userData?.firstName && userData?.lastName 
+              ? `${userData.firstName} ${userData.lastName}` 
+              : userData?.username || userData?.name || 'System';
+
+            // Create notification
+            const notificationData = {
+              type: 'property',
+              title: 'العقار أصبح متاحاً',
+              message: `تم جعل العقار "${updatedProperty.title}" متاحاً للحجز`,
+              propertyId: updatedProperty._id,
+              userId: req.user._id,
+              metadata: {
+                propertyTitle: updatedProperty.title,
+                propertyId: updatedProperty._id,
+                action: 'made_available',
+                createdById: req.user._id,
+                createdByName: creatorName,
+                createdAt: new Date(),
+                // Add current reservation details if available
+                ...(currentReservation?.reservationId && {
+                  customerName: currentReservation.reservationId.customerName,
+                  customerPhone: currentReservation.reservationId.customerPhone,
+                  startDate: currentReservation.reservationId.startDate,
+                  endDate: currentReservation.reservationId.endDate,
+                  totalPrice: currentReservation.reservationId.totalPrice,
+                  paidAmount: currentReservation.reservationId.paidAmount || 0,
+                  remainingAmount: currentReservation.reservationId.remainingAmount || currentReservation.reservationId.totalPrice,
+                  paymentStatus: currentReservation.reservationId.paymentStatus || 'pending',
+                  status: currentReservation.reservationId.status,
+                  // Also keep previous reservation for reference
+                  previousReservation: {
+                    customerName: currentReservation.reservationId.customerName,
+                    customerPhone: currentReservation.reservationId.customerPhone,
+                    status: currentReservation.reservationId.status,
+                    startDate: currentReservation.reservationId.startDate,
+                    endDate: currentReservation.reservationId.endDate,
+                    totalPrice: currentReservation.reservationId.totalPrice
+                  }
+                })
+              }
+            };
+            
+            await Notification.create(notificationData);
+            console.log('🔔 Notification created for property availability:', updatedProperty._id);
+
+            // Create history record
+            const historyData = {
+              action: 'property_updated',
+              entityType: 'property',
+              entityId: updatedProperty._id,
+              userId: req.user._id,
+              description: `تم جعل العقار "${updatedProperty.title}" متاحاً للحجز`,
+              metadata: {
+                propertyTitle: updatedProperty.title,
+                propertyId: updatedProperty._id,
+                action: 'made_available',
+                previousStatus: 'reserved',
+                newStatus: 'available',
+                createdById: req.user._id,
+                createdByName: creatorName,
+                createdAt: new Date(),
+                // Add current reservation details if available
+                ...(currentReservation?.reservationId && {
+                  customerName: currentReservation.reservationId.customerName,
+                  customerPhone: currentReservation.reservationId.customerPhone,
+                  startDate: currentReservation.reservationId.startDate,
+                  endDate: currentReservation.reservationId.endDate,
+                  totalPrice: currentReservation.reservationId.totalPrice,
+                  paidAmount: currentReservation.reservationId.paidAmount || 0,
+                  remainingAmount: currentReservation.reservationId.remainingAmount || currentReservation.reservationId.totalPrice,
+                  paymentStatus: currentReservation.reservationId.paymentStatus || 'pending',
+                  status: currentReservation.reservationId.status,
+                  // Also keep previous reservation for reference
+                  previousReservation: {
+                    customerName: currentReservation.reservationId.customerName,
+                    customerPhone: currentReservation.reservationId.customerPhone,
+                    status: currentReservation.reservationId.status,
+                    startDate: currentReservation.reservationId.startDate,
+                    endDate: currentReservation.reservationId.endDate,
+                    totalPrice: currentReservation.reservationId.totalPrice
+                  }
+                })
+              },
+              ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
+            };
+
+            await History.create(historyData);
+            console.log('📝 History record created for property availability:', updatedProperty._id);
+
+          } catch (notificationError) {
+            console.error('Failed to create notification/history:', notificationError);
+            // Continue with property update even if notification fails
+          }
+        }
 
         sendSuccess(res, 'Property updated successfully', { property: updatedProperty });
         return;
@@ -197,7 +312,7 @@ router.post('/reservations',
 
       await reservation.save();
 
-      // Create notification for new reservation
+      // Create notification and history for new reservation
       try {
         // Fetch user data to get proper name
         const userData = await User.findById(req.user._id);
@@ -205,6 +320,7 @@ router.post('/reservations',
           ? `${userData.firstName} ${userData.lastName}` 
           : userData?.username || userData?.name || 'System';
         
+        // Create notification
         await Notification.create({
           type: 'reservation',
           title: 'حجز جديد',
@@ -219,7 +335,10 @@ router.post('/reservations',
             startDate: new Date(startDate),
             endDate: new Date(endDate),
             totalPrice: totalPrice,
+            paidAmount: paidAmount,
+            remainingAmount: remainingAmount,
             paymentStatus: paymentStatus || 'pending',
+            status: 'pending',
             employerId: employerId,
             createdById: req.user._id,
             createdByName: creatorName,
@@ -227,8 +346,36 @@ router.post('/reservations',
           }
         });
         console.log('🔔 Notification created for employer reservation:', reservation._id);
+
+        // Create history record
+        const History = require('../models/history.model');
+        await History.create({
+          action: 'reservation_created',
+          entityType: 'reservation',
+          entityId: reservation._id,
+          userId: req.user._id,
+          description: `تم إنشاء حجز جديد للعميل ${customerName} للعقار ${property.title}`,
+          metadata: {
+            customerName: customerName,
+            propertyTitle: property.title,
+            customerPhone: customerPhone,
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
+            totalPrice: totalPrice,
+            paidAmount: paidAmount,
+            remainingAmount: remainingAmount,
+            paymentStatus: paymentStatus || 'pending',
+            status: 'pending',
+            employerId: employerId,
+            createdById: req.user._id,
+            createdByName: creatorName,
+            createdAt: new Date()
+          },
+          ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
+        });
+        console.log('📝 History record created for employer reservation:', reservation._id);
       } catch (notificationError) {
-        console.error('Failed to create notification:', notificationError);
+        console.error('Failed to create notification/history:', notificationError);
         // Continue with reservation creation even if notification fails
       }
 
@@ -330,7 +477,7 @@ router.put('/reservations/:id',
 
       await reservation.save();
 
-      // Create notification for reservation update
+      // Create notification and history for reservation update
       try {
         const updatedProperty = await Property.findById(reservation.propertyId);
         
@@ -340,6 +487,7 @@ router.put('/reservations/:id',
           ? `${userData.firstName} ${userData.lastName}` 
           : userData?.username || userData?.name || 'System';
         
+        // Create notification
         await Notification.create({
           type: 'reservation',
           title: 'تم تحديث الحجز',
@@ -356,6 +504,8 @@ router.put('/reservations/:id',
             totalPrice: reservation.totalPrice,
             paymentStatus: reservation.paymentStatus,
             status: reservation.status,
+            paidAmount: reservation.paidAmount,
+            remainingAmount: reservation.remainingAmount,
             employerId: reservation.employerId,
             createdById: req.user._id,
             createdByName: creatorName,
@@ -375,8 +525,48 @@ router.put('/reservations/:id',
           }
         });
         console.log('🔔 Notification created for employer reservation update:', reservation._id);
+
+        // Create history record
+        const History = require('../models/history.model');
+        await History.create({
+          action: 'reservation_updated',
+          entityType: 'reservation',
+          entityId: reservation._id,
+          userId: req.user._id,
+          description: `تم تحديث حجز العميل ${reservation.customerName} للعقار ${updatedProperty?.title || 'Unknown'}`,
+          metadata: {
+            customerName: reservation.customerName,
+            propertyTitle: updatedProperty?.title || 'Unknown',
+            customerPhone: reservation.customerPhone,
+            startDate: reservation.startDate,
+            endDate: reservation.endDate,
+            totalPrice: reservation.totalPrice,
+            paymentStatus: reservation.paymentStatus,
+            status: reservation.status,
+            paidAmount: reservation.paidAmount,
+            remainingAmount: reservation.remainingAmount,
+            employerId: reservation.employerId,
+            createdById: req.user._id,
+            createdByName: creatorName,
+            createdAt: new Date(),
+            action: 'updated',
+            changes: {
+              customerName: customerName !== undefined,
+              customerPhone: customerPhone !== undefined,
+              startDate: startDate !== undefined,
+              endDate: endDate !== undefined,
+              totalPrice: totalPrice !== undefined,
+              paidAmount: paidAmount !== undefined,
+              remainingAmount: remainingAmount !== undefined,
+              paymentStatus: paymentStatus !== undefined,
+              status: status !== undefined
+            }
+          },
+          ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
+        });
+        console.log('📝 History record created for employer reservation update:', reservation._id);
       } catch (notificationError) {
-        console.error('Failed to create notification:', notificationError);
+        console.error('Failed to create notification/history:', notificationError);
         // Continue with reservation update even if notification fails
       }
 

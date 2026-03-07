@@ -37,21 +37,23 @@ router.get('/', auth, async (req, res) => {
 
     console.log('Employer office wilayaId:', employerOffice.wilayaId);
 
-    // Get all properties in office's wilaya
+    // Get all properties in employer's office (not the entire wilaya)
     const Property = require('../models/property.model');
-    const wilayaProperties = await Property.find({ 
-      wilayaId: employerOffice.wilayaId 
+    const officeProperties = await Property.find({ 
+      officeId: req.user.officeId 
     }).select('_id');
     
-    const propertyIds = wilayaProperties.map(p => p._id);
-    console.log('Properties in office wilaya:', propertyIds.length);
+    const propertyIds = officeProperties.map(p => p._id);
+    console.log('Properties in employer office:', propertyIds.length);
 
-    // Fetch notifications related to all properties in the wilaya
+    // Fetch notifications related to properties in employer's office only
+    // Filter for order notifications only (not admin notifications)
     const notifications = await Notification.find({
-      propertyId: { $in: propertyIds }
+      propertyId: { $in: propertyIds },
+      type: { $in: ['order'] } // Only show order notifications to employers
     })
       .populate('reservationId', 'customerName customerPhone')
-      .populate('propertyId', 'title wilayaId')
+      .populate('propertyId', 'title wilayaId officeId')
       .populate('metadata.reminderId', 'message reminderType')
       .populate('seenBy', 'username firstName lastName name')
       .sort({ createdAt: -1 })
@@ -59,10 +61,11 @@ router.get('/', auth, async (req, res) => {
       .limit(limit);
 
     const total = await Notification.countDocuments({
-      propertyId: { $in: propertyIds }
+      propertyId: { $in: propertyIds },
+      type: { $in: ['order'] } // Only count order notifications
     });
 
-    console.log('Found notifications for employer office wilaya:', notifications.length);
+    console.log('Found notifications for employer office:', notifications.length);
 
     res.json({
       success: true,
@@ -99,17 +102,18 @@ router.get('/unread-count', auth, async (req, res) => {
       });
     }
 
-    // Get all properties in office's wilaya
+    // Get all properties in employer's office (not the entire wilaya)
     const Property = require('../models/property.model');
-    const wilayaProperties = await Property.find({ 
-      wilayaId: employerOffice.wilayaId 
+    const officeProperties = await Property.find({ 
+      officeId: req.user.officeId 
     }).select('_id');
     
-    const propertyIds = wilayaProperties.map(p => p._id);
+    const propertyIds = officeProperties.map(p => p._id);
 
     const unreadCount = await Notification.countDocuments({ 
       propertyId: { $in: propertyIds },
-      read: false 
+      read: false,
+      type: { $in: ['order'] } // Only count order notifications
     });
 
     res.json({

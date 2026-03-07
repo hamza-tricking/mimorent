@@ -385,7 +385,18 @@ router.put('/:id',
               createdById: req.user._id,
               createdByName: creatorName,
               createdAt: new Date(),
+              // Add current reservation details if available
               ...(currentReservation?.reservationId && {
+                customerName: currentReservation.reservationId.customerName,
+                customerPhone: currentReservation.reservationId.customerPhone,
+                startDate: currentReservation.reservationId.startDate,
+                endDate: currentReservation.reservationId.endDate,
+                totalPrice: currentReservation.reservationId.totalPrice,
+                paidAmount: currentReservation.reservationId.paidAmount || 0,
+                remainingAmount: currentReservation.reservationId.remainingAmount || currentReservation.reservationId.totalPrice,
+                paymentStatus: currentReservation.reservationId.paymentStatus || 'pending',
+                status: currentReservation.reservationId.status,
+                // Also keep previous reservation for reference
                 previousReservation: {
                   customerName: currentReservation.reservationId.customerName,
                   customerPhone: currentReservation.reservationId.customerPhone,

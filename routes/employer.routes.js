@@ -182,48 +182,54 @@ router.put('/properties/:id',
             console.log('🔔 Notification created for property availability:', updatedProperty._id);
 
             // Create history record
-            const historyData = {
-              action: 'property_updated',
-              entityType: 'property',
-              entityId: updatedProperty._id,
-              userId: req.user._id,
-              description: `تم جعل العقار "${updatedProperty.title}" متاحاً للحجز`,
-              metadata: {
-                propertyTitle: updatedProperty.title,
-                propertyId: updatedProperty._id,
-                action: 'made_available',
-                previousStatus: 'reserved',
-                newStatus: 'available',
-                createdById: req.user._id,
-                createdByName: creatorName,
-                createdAt: new Date(),
-                // Add current reservation details if available
-                ...(currentReservation?.reservationId && {
-                  customerName: currentReservation.reservationId.customerName,
-                  customerPhone: currentReservation.reservationId.customerPhone,
-                  startDate: currentReservation.reservationId.startDate,
-                  endDate: currentReservation.reservationId.endDate,
-                  totalPrice: currentReservation.reservationId.totalPrice,
-                  paidAmount: currentReservation.reservationId.paidAmount || 0,
-                  remainingAmount: currentReservation.reservationId.remainingAmount || currentReservation.reservationId.totalPrice,
-                  paymentStatus: currentReservation.reservationId.paymentStatus || 'pending',
-                  status: currentReservation.reservationId.status,
-                  // Also keep previous reservation for reference
-                  previousReservation: {
+            // Skip creating property_updated history when property is being marked as reserved
+            // The reservation_created history already covers this action
+            if (updatedProperty.isReserved) {
+              console.log('📝 Skipping property_updated history - property is being reserved, reservation_created history will cover this');
+            } else {
+              const historyData = {
+                action: 'property_updated',
+                entityType: 'property',
+                entityId: updatedProperty._id,
+                userId: req.user._id,
+                description: `تم جعل العقار "${updatedProperty.title}" متاحاً للحجز`,
+                metadata: {
+                  propertyTitle: updatedProperty.title,
+                  propertyId: updatedProperty._id,
+                  action: 'made_available',
+                  previousStatus: 'reserved',
+                  newStatus: 'available',
+                  createdById: req.user._id,
+                  createdByName: creatorName,
+                  createdAt: new Date(),
+                  // Add current reservation details if available
+                  ...(currentReservation?.reservationId && {
                     customerName: currentReservation.reservationId.customerName,
                     customerPhone: currentReservation.reservationId.customerPhone,
-                    status: currentReservation.reservationId.status,
                     startDate: currentReservation.reservationId.startDate,
                     endDate: currentReservation.reservationId.endDate,
-                    totalPrice: currentReservation.reservationId.totalPrice
-                  }
-                })
-              },
-              ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
-            };
+                    totalPrice: currentReservation.reservationId.totalPrice,
+                    paidAmount: currentReservation.reservationId.paidAmount || 0,
+                    remainingAmount: currentReservation.reservationId.remainingAmount || currentReservation.reservationId.totalPrice,
+                    paymentStatus: currentReservation.reservationId.paymentStatus || 'pending',
+                    status: currentReservation.reservationId.status,
+                    // Also keep previous reservation for reference
+                    previousReservation: {
+                      customerName: currentReservation.reservationId.customerName,
+                      customerPhone: currentReservation.reservationId.customerPhone,
+                      status: currentReservation.reservationId.status,
+                      startDate: currentReservation.reservationId.startDate,
+                      endDate: currentReservation.reservationId.endDate,
+                      totalPrice: currentReservation.reservationId.totalPrice
+                    }
+                  })
+                },
+                ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
+              };
 
-            await History.create(historyData);
-            console.log('📝 History record created for property availability:', updatedProperty._id);
+              await History.create(historyData);
+              console.log('📝 History record created for property availability:', updatedProperty._id);
+            }
 
           } catch (notificationError) {
             console.error('Failed to create notification/history:', notificationError);

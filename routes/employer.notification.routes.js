@@ -1,4 +1,6 @@
 const express = require('express');
+const mongoose = require('mongoose');
+const { ObjectId } = mongoose.Types;
 const router = express.Router();
 const Notification = require('../models/notification.model');
 const auth = require('../middlewares/auth.middleware');
@@ -47,10 +49,10 @@ router.get('/', auth, async (req, res) => {
     console.log('Properties in employer office:', propertyIds.length);
 
     // Fetch notifications related to properties in employer's office only
-    // Filter for order notifications only (not admin notifications)
+    // Filter for order and reminder notifications (not admin notifications)
     const notifications = await Notification.find({
       propertyId: { $in: propertyIds },
-      type: { $in: ['order'] } // Only show order notifications to employers
+      type: { $in: ['order', 'reminders'] } // Show both order and reminder notifications to employers
     })
       .populate('reservationId', 'customerName customerPhone')
       .populate('propertyId', 'title wilayaId officeId')
@@ -62,7 +64,7 @@ router.get('/', auth, async (req, res) => {
 
     const total = await Notification.countDocuments({
       propertyId: { $in: propertyIds },
-      type: { $in: ['order'] } // Only count order notifications
+      type: { $in: ['order', 'reminders'] } // Count both order and reminder notifications
     });
 
     console.log('Found notifications for employer office:', notifications.length);
@@ -113,7 +115,7 @@ router.get('/unread-count', auth, async (req, res) => {
     const unreadCount = await Notification.countDocuments({ 
       propertyId: { $in: propertyIds },
       read: false,
-      type: { $in: ['order'] } // Only count order notifications
+      type: { $in: ['order', 'reminders'] } // Count both order and reminder notifications
     });
 
     res.json({
@@ -173,7 +175,7 @@ router.put('/:id/seen', auth, async (req, res) => {
     } else {
       // Filter out any invalid ObjectIds from seenBy array
       notification.seenBy = notification.seenBy.filter(id => 
-        id && mongoose.Types.ObjectId.isValid(id.toString())
+        id && ObjectId.isValid(id.toString())
       );
     }
     
@@ -205,7 +207,7 @@ router.put('/:id/seen', auth, async (req, res) => {
       { _id: req.params.id, propertyId: { $in: propertyIds } },
       { 
         $addToSet: { 
-          seenBy: new mongoose.Types.ObjectId(userId)  // Explicitly create ObjectId
+          seenBy: new ObjectId(userId)  // Create ObjectId
         }
       },
       { new: true }
@@ -259,11 +261,11 @@ router.put('/seen-all', auth, async (req, res) => {
     const result = await Notification.updateMany(
       { 
         propertyId: { $in: propertyIds },
-        'seenBy': { $ne: new mongoose.Types.ObjectId(userId) } // Only update notifications where user hasn't seen them yet
+        'seenBy': { $ne: new ObjectId(userId) } // Only update notifications where user hasn't seen them yet
       },
       { 
         $addToSet: { 
-          seenBy: new mongoose.Types.ObjectId(userId)  // Explicitly create ObjectId
+          seenBy: new ObjectId(userId)  // Create ObjectId
         }
       }
     );

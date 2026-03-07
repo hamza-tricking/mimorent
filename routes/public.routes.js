@@ -169,31 +169,32 @@ router.get('/properties',
       const properties = await Property.find({ available: true })
         .populate('wilayaId', 'name')
         .populate('officeId', 'name')
+        .populate('reservationId', 'endDate')
         .sort({ createdAt: -1 });
 
       console.log('Available properties found:', properties.length);
 
-      // Add reservation end date for reserved properties
-      const propertiesWithReservationInfo = await Promise.all(
-        properties.map(async (property) => {
-          const propertyObj = property.toObject();
-          
-          // Check if property has active reservations (don't rely on isReserved field)
-          const activeReservation = await Reservation.findOne({
-            propertyId: property._id,
-            status: { $in: ['pending', 'confirmed', 'approved'] }
-          }).sort({ endDate: -1 }).select('endDate');
-          
-          if (activeReservation) {
-            propertyObj.isReserved = true;
-            propertyObj.reservationEndDate = activeReservation.endDate;
-          } else {
-            propertyObj.isReserved = false;
-          }
-          
-          return propertyObj;
-        })
-      );
+      // Add availability information to each property
+      const propertiesWithReservationInfo = properties.map(property => {
+        const propertyObj = property.toObject();
+        
+        // Use the property's isReserved field directly (more reliable)
+        // Also check for active reservations as backup
+        const isCurrentlyReserved = propertyObj.isReserved === true;
+        
+        // If property is marked as reserved, try to get reservation end date
+        if (isCurrentlyReserved && property.reservationId) {
+          // Try to get the reservation data if reservationId exists
+          propertyObj.reservationEndDate = property.reservationId.endDate || null;
+        } else {
+          propertyObj.reservationEndDate = null;
+        }
+        
+        // Override isReserved with the actual field value
+        propertyObj.isReserved = isCurrentlyReserved;
+        
+        return propertyObj;
+      });
 
       sendSuccess(res, 'Properties retrieved successfully', {
         properties: propertiesWithReservationInfo

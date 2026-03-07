@@ -116,11 +116,15 @@ router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
       return sendError(res, 'Employer office not found', 404);
     }
 
-    // Build filter - only show orders from employer's wilaya
+    console.log('🟢 Employer wilayaId:', employerOffice.wilayaId);
+
+    // Build filter - show orders from employer's wilaya (same as properties filter)
     const filter = { wilayaId: employerOffice.wilayaId };
     if (status) filter.status = status;
     if (orderType) filter.orderType = orderType;
     if (priority) filter.priority = priority;
+
+    console.log('🟢 Filter:', filter);
 
     // Execute query with pagination and populate property with isReserved field
     const orders = await OrdersReservation.find(filter)
@@ -145,6 +149,9 @@ router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
     }));
 
     const total = await OrdersReservation.countDocuments(filter);
+
+    console.log('🟢 Found orders:', updatedOrders.length);
+    console.log('🟢 Total orders:', total);
 
     sendSuccess(res, 'Orders retrieved successfully', {
       data: updatedOrders,

@@ -425,6 +425,21 @@ router.post('/:id/employer-notes', auth, employerOnly, [
     // Add employer note
     await order.addEmployerNote(req.user._id, message);
 
+    // Create notification for employer note
+    await Notification.create({
+      type: 'order',
+      title: 'ملاحظة موظف جديدة',
+      message: `قام ${req.user.firstName || 'موظف'} بإضافة ملاحظة جديدة على الطلب #${order._id}`,
+      orderId: order._id,
+      propertyId: order.propertyId,
+      userId: req.user._id,
+      metadata: {
+        noteType: 'employerNote',
+        employerName: req.user.firstName || 'موظف',
+        noteMessage: message
+      }
+    });
+
     // Populate references for response
     await order.populate('propertyId', 'title location pricePerDay images');
     await order.populate('wilayaId', 'name');

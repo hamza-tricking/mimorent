@@ -71,6 +71,25 @@ const ordersReservationSchema = new mongoose.Schema({
     maxlength: [500, 'Admin notes cannot exceed 500 characters']
   },
   
+  // Employer notes array for multiple employers to add notes
+  employerNotes: [{
+    employerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    message: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: [500, 'Employer note cannot exceed 500 characters']
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  
   // Priority level
   priority: {
     type: String,
@@ -161,6 +180,16 @@ ordersReservationSchema.methods.complete = function() {
 // Instance method to check if order can be processed
 ordersReservationSchema.methods.canProcess = function() {
   return this.status === 'pending';
+};
+
+// Instance method to add employer note
+ordersReservationSchema.methods.addEmployerNote = function(employerId, message) {
+  this.employerNotes.push({
+    employerId,
+    message,
+    createdAt: new Date()
+  });
+  return this.save();
 };
 
 // Instance method to check if order is active

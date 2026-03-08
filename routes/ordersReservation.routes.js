@@ -69,6 +69,7 @@ router.get('/', auth, adminOnly, asyncHandler(async (req, res) => {
     const orders = await OrdersReservation.find(filter)
       .populate('propertyId', 'title location pricePerDay images isReserved')
       .populate('wilayaId', 'name')
+      .populate('employerNotes.employerId', 'firstName lastName username')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -130,6 +131,7 @@ router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
     const orders = await OrdersReservation.find(filter)
       .populate('propertyId', 'title location pricePerDay images isReserved')
       .populate('wilayaId', 'name')
+      .populate('employerNotes.employerId', 'firstName lastName username')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -397,6 +399,41 @@ router.put('/:id', auth, adminOnly, orderActionValidation, asyncHandler(async (r
   } catch (error) {
     console.error('Update order error:', error);
     sendError(res, 'Failed to update order', 500);
+  }
+}));
+
+// POST /api/admin/orders-reservation/:id/employer-notes - Add employer note
+router.post('/:id/employer-notes', auth, employerOnly, [
+  body('message')
+    .notEmpty().withMessage('Note message is required')
+    .isLength({ max: 500 }).withMessage('Note cannot exceed 500 characters')
+    .trim()
+], asyncHandler(async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return sendError(res, 'Validation failed', 400, errors.array());
+    }
+
+    const { message } = req.body;
+
+    const order = await OrdersReservation.findById(req.params.id);
+    if (!order) {
+      return sendError(res, 'Order not found', 404);
+    }
+
+    // Add employer note
+    await order.addEmployerNote(req.user._id, message);
+
+    // Populate references for response
+    await order.populate('propertyId', 'title location pricePerDay images');
+    await order.populate('wilayaId', 'name');
+    await order.populate('employerNotes.employerId', 'firstName lastName');
+
+    sendSuccess(res, 'Employer note added successfully', { order });
+  } catch (error) {
+    console.error('Add employer note error:', error);
+    sendError(res, 'Failed to add employer note', 500);
   }
 }));
 

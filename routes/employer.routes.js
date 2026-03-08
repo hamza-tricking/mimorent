@@ -493,7 +493,7 @@ router.put('/reservations/:id',
         return sendError(res, 'Reservation not found', 404);
       }
 
-      // Update reservation (employers can edit any reservation)
+      // Update reservation (employers can edit any reservation, but cannot change the original creator)
       if (customerName) reservation.customerName = customerName;
       if (customerPhone) reservation.customerPhone = customerPhone;
       if (startDate) reservation.startDate = new Date(startDate);
@@ -503,6 +503,7 @@ router.put('/reservations/:id',
       if (remainingAmount !== undefined) reservation.remainingAmount = remainingAmount;
       if (paymentStatus) reservation.paymentStatus = paymentStatus;
       if (status) reservation.status = status;
+      // Note: employerId is intentionally not updated to preserve the original creator
 
       await reservation.save();
 

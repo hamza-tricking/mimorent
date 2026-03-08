@@ -429,7 +429,7 @@ router.post('/:id/employer-notes', auth, employerOnly, [
     await Notification.create({
       type: 'order',
       title: 'ملاحظة موظف جديدة',
-      message: `قام ${req.user.firstName || 'موظف'} بإضافة ملاحظة جديدة على الطلب #${order._id}`,
+      message: `${req.user.firstName || 'موظف'} أضاف ملاحظة "${message}" على الطلب #${order._id} للعقار "${order.propertyId?.title || 'عقار غير محدد'}" في ولاية "${order.wilayaId?.name || 'ولاية غير محددة'}"`,
       orderId: order._id,
       propertyId: order.propertyId,
       userId: req.user._id,
@@ -437,7 +437,9 @@ router.post('/:id/employer-notes', auth, employerOnly, [
         noteType: 'employerNote',
         employerName: req.user.firstName || 'موظف',
         noteMessage: message,
-        customerName: order.fullname || order.customerName || 'عميل غير محدد'
+        customerName: order.fullname || order.customerName || 'عميل غير محدد',
+        propertyTitle: order.propertyId?.title || 'عقار غير محدد',
+        wilayaName: order.wilayaId?.name || 'ولاية غير محددة'
       }
     });
 

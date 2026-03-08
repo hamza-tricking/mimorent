@@ -425,6 +425,11 @@ router.post('/:id/employer-notes', auth, employerOnly, [
     // Add employer note
     await order.addEmployerNote(req.user._id, message);
 
+    // Populate references first to get property and wilaya data for notification
+    await order.populate('propertyId', 'title location pricePerDay images');
+    await order.populate('wilayaId', 'name');
+    await order.populate('employerNotes.employerId', 'firstName lastName');
+
     // Create notification for employer note
     await Notification.create({
       type: 'order',
@@ -442,11 +447,6 @@ router.post('/:id/employer-notes', auth, employerOnly, [
         wilayaName: order.wilayaId?.name || 'ولاية غير محددة'
       }
     });
-
-    // Populate references for response
-    await order.populate('propertyId', 'title location pricePerDay images');
-    await order.populate('wilayaId', 'name');
-    await order.populate('employerNotes.employerId', 'firstName lastName');
 
     sendSuccess(res, 'Employer note added successfully', { order });
   } catch (error) {

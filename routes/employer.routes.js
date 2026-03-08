@@ -257,30 +257,14 @@ router.get('/reservations',
   employerOnly,
   asyncHandler(async (req, res) => {
     try {
-      // Get employer's office and wilaya
-      const Office = require('../models/office.model');
-      const employerOffice = await Office.findById(req.user.officeId);
-      
-      if (!employerOffice) {
-        return sendError(res, 'Employer office not found', 404);
-      }
-
-      // Get all properties in employer's office
-      const Property = require('../models/property.model');
-      const officeProperties = await Property.find({ 
-        officeId: req.user.officeId 
-      }).select('_id');
-      
-      const propertyIds = officeProperties.map(p => p._id);
-
-      // Get reservations for properties in employer's office
+      // Get reservations created by the current employer
       const reservations = await Reservation.find({
-        propertyId: { $in: propertyIds }
+        employerId: req.user._id
       })
         .populate('propertyId', 'title description pricePerDay images')
         .sort({ createdAt: -1 });
 
-      console.log('🟢 Found reservations for employer office:', reservations.length);
+      console.log('🟢 Found reservations for employer:', reservations.length);
 
       sendSuccess(res, 'Reservations retrieved successfully', { reservations });
     } catch (error) {

@@ -257,13 +257,13 @@ router.get('/reservations',
   employerOnly,
   asyncHandler(async (req, res) => {
     try {
-      // Get all reservations (employers can see all reservations)
+      // Get all reservations (employers can see all reservations for properties tab)
       const reservations = await Reservation.find({})
         .populate('propertyId', 'title description pricePerDay images')
         .populate('employerId', 'firstName lastName username')
         .sort({ createdAt: -1 });
 
-      console.log('🟢 Found all reservations for employer:', reservations.length);
+      console.log('🟢 Found all reservations:', reservations.length);
 
       sendSuccess(res, 'Reservations retrieved successfully', { reservations });
     } catch (error) {

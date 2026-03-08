@@ -436,7 +436,8 @@ router.post('/:id/employer-notes', auth, employerOnly, [
       metadata: {
         noteType: 'employerNote',
         employerName: req.user.firstName || 'موظف',
-        noteMessage: message
+        noteMessage: message,
+        customerName: order.fullname || order.customerName || 'عميل غير محدد'
       }
     });
 

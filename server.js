@@ -24,20 +24,24 @@ app.use(cors({
 }));
 
 const limiter = rateLimit({
-  windowMs: rateLimitWindowMs,
-  max: rateLimitMaxRequests,
+  windowMs: rateLimitWindowMs, // 1 minute
+  max: rateLimitMaxRequests, // 1000 requests per minute
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for health checks and static files
+    return req.path === '/api/health' || req.path.startsWith('/uploads')
+  }
 });
 
 // More lenient rate limit for admin routes
 const adminLimiter = rateLimit({
   windowMs: 60000, // 1 minute
-  max: 300, // 300 requests per minute
+  max: 500, // 500 requests per minute for admin routes
   message: {
     success: false,
     message: 'Too many admin requests, please try again later.'
@@ -46,8 +50,35 @@ const adminLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// Very lenient rate limit for employer routes (for employer notes)
+const employerLimiter = rateLimit({
+  windowMs: 60000, // 1 minute
+  max: 800, // 800 requests per minute for employer routes
+  message: {
+    success: false,
+    message: 'Too many employer requests, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Special rate limit for orders routes (most frequent requests)
+const ordersLimiter = rateLimit({
+  windowMs: 60000, // 1 minute
+  max: 1200, // 1200 requests per minute for orders
+  message: {
+    success: false,
+    message: 'Too many order requests, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 app.use('/api/', limiter);
 app.use('/api/admin', adminLimiter);
+app.use('/api/employer', employerLimiter);
+app.use('/api/admin/orders-reservation', ordersLimiter);
+app.use('/api/admin/orders-reservation/:id/employer-notes', ordersLimiter);
 
 if (nodeEnv === 'development') {
   app.use(morgan('dev'));

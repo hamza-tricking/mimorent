@@ -82,6 +82,7 @@ router.post('/login',
       email: user.email,
       role: user.role,
       fullName: user.fullName,
+      image: user.image,
       lastLogin: user.lastLogin
     };
 

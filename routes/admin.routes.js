@@ -171,17 +171,11 @@ router.post('/users',
       }
 
       // Check if user already exists
-      const searchConditions = [
-        { username: username.toLowerCase() }
-      ];
-      
-      // Only check email if it's provided and not empty
-      if (email && email.trim()) {
-        searchConditions.push({ email: email.toLowerCase().trim() });
-      }
-      
       const existingUser = await User.findOne({
-        $or: searchConditions
+        $or: [
+          { username: username.toLowerCase() },
+          { email: email?.toLowerCase() }
+        ].filter(Boolean)
       });
 
       if (existingUser) {
@@ -191,7 +185,7 @@ router.post('/users',
       // Create new user
       const user = new User({
         username,
-        email: email && email.trim() ? email.toLowerCase().trim() : undefined,
+        email,
         firstName,
         lastName,
         phone,

@@ -212,6 +212,7 @@ router.post('/users',
         }
       }, 201);
     } catch (error) {
+      console.log(error)
       sendError(res, 'Failed to create user', error);
     }
   })

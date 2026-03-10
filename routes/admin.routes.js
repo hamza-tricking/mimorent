@@ -179,7 +179,7 @@ router.post('/users',
       });
 
       if (existingUser) {
-        return sendError(res, 'User with this username or email already exists', 409);
+        return sendError(res, 'User with this username or email already exists', 409,existingUser);
       }
 
       // Create new user

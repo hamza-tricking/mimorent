@@ -177,12 +177,8 @@ router.get('/',
       const search = req.query.search || '';
       const wilayaId = req.query.wilayaId;
       const available = req.query.available;
-
-      // Migration: Ensure all properties have location field
-      await Property.updateMany(
-        { location: { $exists: false } },
-        { $set: { location: 'غير محدد' } }
-      );
+      const showingOnHome = req.query.showingOnHome;
+      const reservedWith = req.query.reservedWith;
 
       // Build filter object
       const filter = {};

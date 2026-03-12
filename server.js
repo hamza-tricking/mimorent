@@ -114,13 +114,14 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
+app.use('/api/employer', require('./routes/employer.routes'));
+app.use('/api/employer', require('./routes/employer.notification.routes'));
+app.use('/api', require('./routes/public.routes'));
+app.use('/api/admin', require('./routes/property.routes'));
 app.use('/api/admin', require('./routes/admin.routes'));
 app.use('/api/admin', require('./routes/financial.routes'));
 app.use('/api/admin', require('./routes/reminder.routes'));
-console.log('Notification routes registered');
-app.use('/api/employer', require('./routes/employer.routes'));
-app.use('/api/employer/notifications', require('./routes/employer.notification.routes'));
-app.use('/api', require('./routes/public.routes'));
+console.log('All routes registered');
 
 // Start reminder job
 require('./jobs/reminder.job');

@@ -235,7 +235,18 @@ router.get('/:id',
   adminOnly,
   asyncHandler(async (req, res) => {
     try {
-      const property = await Property.findById(req.params.id)
+      const { id } = req.params;
+      console.log('🔍 Property ID requested:', id);
+      console.log('🔍 ID type:', typeof id);
+      console.log('🔍 Request URL:', req.originalUrl);
+      
+      // Validate ID format
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        console.log('❌ Invalid ObjectId format:', id);
+        return sendError(res, 'Invalid property ID format', 400);
+      }
+      
+      const property = await Property.findById(id)
         .populate([
           { path: 'wilayaId', select: 'name code' },
           { path: 'officeId', select: 'name code' },

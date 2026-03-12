@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Property = require('../models/property.model');
+const Property = require('./models/property.model');
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/mimorent', {

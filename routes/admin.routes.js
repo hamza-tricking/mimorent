@@ -474,27 +474,8 @@ router.put('/properties/:id',
   adminOnly,
   asyncHandler(async (req, res) => {
     try {
-      console.log('🔍 Admin PUT Route Called - New Fields Support');
-      console.log('🔍 Request Body:', JSON.stringify(req.body, null, 2));
-      
       const propertyId = req.params.id;
-      const { 
-        title, 
-        description, 
-        location, 
-        propertyType, 
-        pricePerDay, 
-        images, 
-        wilayaId, 
-        officeId, 
-        available, 
-        isReserved,
-        showingOnHome,
-        reservedWith
-      } = req.body;
-
-      console.log('🔍 Extracted reservedWith:', reservedWith);
-      console.log('🔍 Extracted showingOnHome:', showingOnHome);
+      const { available, isReserved } = req.body;
 
       // Check if property exists
       const property = await Property.findById(propertyId);
@@ -502,22 +483,15 @@ router.put('/properties/:id',
         return sendError(res, 'Property not found', 404);
       }
 
-      // Build update object with all possible fields
+      // Build update object
       const updateData = {};
-      if (title !== undefined) updateData.title = title;
-      if (description !== undefined) updateData.description = description;
-      if (location !== undefined) updateData.location = location;
-      if (propertyType !== undefined) updateData.propertyType = propertyType;
-      if (pricePerDay !== undefined) updateData.pricePerDay = pricePerDay;
-      if (images !== undefined) updateData.images = images;
-      if (wilayaId !== undefined) updateData.wilayaId = wilayaId;
-      if (officeId !== undefined) updateData.officeId = officeId;
-      if (available !== undefined) updateData.available = available;
-      if (isReserved !== undefined) updateData.isReserved = isReserved;
-      if (showingOnHome !== undefined) updateData.showingOnHome = showingOnHome;
-      if (reservedWith !== undefined) updateData.reservedWith = reservedWith;
-
-      console.log('🔍 Update Data:', JSON.stringify(updateData, null, 2));
+      if (available !== undefined) {
+        updateData.available = available;
+      }
+      
+      if (isReserved !== undefined) {
+        updateData.isReserved = isReserved;
+      }
 
       // Only update if there's something to update
       if (Object.keys(updateData).length > 0) {

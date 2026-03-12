@@ -98,20 +98,6 @@ const propertySchema = new mongoose.Schema({
   reservationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Reservation'
-  },
-  showingOnHome: {
-    type: Boolean,
-    default: true,
-    comment: 'Whether to show this property on the home page'
-  },
-  reservedWith: {
-    type: String,
-    enum: {
-      values: ['day', 'month'],
-      message: 'Reserved with must be either day or month'
-    },
-    default: 'day',
-    comment: 'Reservation period type - daily or monthly'
   }
 }, {
   timestamps: true,
@@ -127,8 +113,6 @@ propertySchema.index({ pricePerDay: 1 });
 propertySchema.index({ isReserved: 1 });
 propertySchema.index({ available: 1 });
 propertySchema.index({ location: 'text' });
-propertySchema.index({ showingOnHome: 1 });
-propertySchema.index({ reservedWith: 1 });
 
 // Static method to find available properties
 propertySchema.statics.findAvailable = function(filters = {}) {

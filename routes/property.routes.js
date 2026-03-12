@@ -53,13 +53,7 @@ const createPropertyValidation = [
     }),
   body('available')
     .optional()
-    .isBoolean().withMessage('Available must be a boolean'),
-  body('showingOnHome')
-    .optional()
-    .isBoolean().withMessage('Showing on home must be a boolean'),
-  body('reservedWith')
-    .optional()
-    .isIn(['day', 'month']).withMessage('Reserved with must be either day or month')
+    .isBoolean().withMessage('Available must be a boolean')
 ];
 
 // Validation rules for property update
@@ -94,13 +88,7 @@ const updatePropertyValidation = [
     .isArray().withMessage('Images must be an array'),
   body('available')
     .optional()
-    .isBoolean().withMessage('Available must be a boolean'),
-  body('showingOnHome')
-    .optional()
-    .isBoolean().withMessage('Showing on home must be a boolean'),
-  body('reservedWith')
-    .optional()
-    .isIn(['day', 'month']).withMessage('Reserved with must be either day or month')
+    .isBoolean().withMessage('Available must be a boolean')
 ];
 
 // POST /api/admin/properties - Create new property
@@ -177,8 +165,12 @@ router.get('/',
       const search = req.query.search || '';
       const wilayaId = req.query.wilayaId;
       const available = req.query.available;
-      const showingOnHome = req.query.showingOnHome;
-      const reservedWith = req.query.reservedWith;
+
+      // Migration: Ensure all properties have location field
+      await Property.updateMany(
+        { location: { $exists: false } },
+        { $set: { location: 'غير محدد' } }
+      );
 
       // Build filter object
       const filter = {};
@@ -193,12 +185,6 @@ router.get('/',
       }
       if (available !== undefined) {
         filter.available = available === 'true';
-      }
-      if (showingOnHome !== undefined) {
-        filter.showingOnHome = showingOnHome === 'true';
-      }
-      if (reservedWith) {
-        filter.reservedWith = reservedWith;
       }
 
       const properties = await Property.find(filter)
@@ -235,18 +221,7 @@ router.get('/:id',
   adminOnly,
   asyncHandler(async (req, res) => {
     try {
-      const { id } = req.params;
-      console.log('🔍 Property ID requested:', id);
-      console.log('🔍 ID type:', typeof id);
-      console.log('🔍 Request URL:', req.originalUrl);
-      
-      // Validate ID format
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        console.log('❌ Invalid ObjectId format:', id);
-        return sendError(res, 'Invalid property ID format', 400);
-      }
-      
-      const property = await Property.findById(id)
+      const property = await Property.findById(req.params.id)
         .populate([
           { path: 'wilayaId', select: 'name code' },
           { path: 'officeId', select: 'name code' },

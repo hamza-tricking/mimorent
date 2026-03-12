@@ -475,7 +475,20 @@ router.put('/properties/:id',
   asyncHandler(async (req, res) => {
     try {
       const propertyId = req.params.id;
-      const { available, isReserved } = req.body;
+      const { 
+        title, 
+        description, 
+        location, 
+        propertyType, 
+        pricePerDay, 
+        images, 
+        wilayaId, 
+        officeId, 
+        available, 
+        isReserved,
+        showingOnHome,
+        reservedWith
+      } = req.body;
 
       // Check if property exists
       const property = await Property.findById(propertyId);
@@ -483,15 +496,20 @@ router.put('/properties/:id',
         return sendError(res, 'Property not found', 404);
       }
 
-      // Build update object
+      // Build update object with all possible fields
       const updateData = {};
-      if (available !== undefined) {
-        updateData.available = available;
-      }
-      
-      if (isReserved !== undefined) {
-        updateData.isReserved = isReserved;
-      }
+      if (title !== undefined) updateData.title = title;
+      if (description !== undefined) updateData.description = description;
+      if (location !== undefined) updateData.location = location;
+      if (propertyType !== undefined) updateData.propertyType = propertyType;
+      if (pricePerDay !== undefined) updateData.pricePerDay = pricePerDay;
+      if (images !== undefined) updateData.images = images;
+      if (wilayaId !== undefined) updateData.wilayaId = wilayaId;
+      if (officeId !== undefined) updateData.officeId = officeId;
+      if (available !== undefined) updateData.available = available;
+      if (isReserved !== undefined) updateData.isReserved = isReserved;
+      if (showingOnHome !== undefined) updateData.showingOnHome = showingOnHome;
+      if (reservedWith !== undefined) updateData.reservedWith = reservedWith;
 
       // Only update if there's something to update
       if (Object.keys(updateData).length > 0) {

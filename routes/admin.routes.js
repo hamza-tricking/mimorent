@@ -474,6 +474,9 @@ router.put('/properties/:id',
   adminOnly,
   asyncHandler(async (req, res) => {
     try {
+      console.log('🔍 Admin PUT Route Called - New Fields Support');
+      console.log('🔍 Request Body:', JSON.stringify(req.body, null, 2));
+      
       const propertyId = req.params.id;
       const { 
         title, 
@@ -489,6 +492,9 @@ router.put('/properties/:id',
         showingOnHome,
         reservedWith
       } = req.body;
+
+      console.log('🔍 Extracted reservedWith:', reservedWith);
+      console.log('🔍 Extracted showingOnHome:', showingOnHome);
 
       // Check if property exists
       const property = await Property.findById(propertyId);
@@ -510,6 +516,8 @@ router.put('/properties/:id',
       if (isReserved !== undefined) updateData.isReserved = isReserved;
       if (showingOnHome !== undefined) updateData.showingOnHome = showingOnHome;
       if (reservedWith !== undefined) updateData.reservedWith = reservedWith;
+
+      console.log('🔍 Update Data:', JSON.stringify(updateData, null, 2));
 
       // Only update if there's something to update
       if (Object.keys(updateData).length > 0) {

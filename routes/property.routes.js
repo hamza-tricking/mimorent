@@ -53,7 +53,13 @@ const createPropertyValidation = [
     }),
   body('available')
     .optional()
-    .isBoolean().withMessage('Available must be a boolean')
+    .isBoolean().withMessage('Available must be a boolean'),
+  body('showingOnHome')
+    .optional()
+    .isBoolean().withMessage('Showing on home must be a boolean'),
+  body('reservedWith')
+    .optional()
+    .isIn(['day', 'month']).withMessage('Reserved with must be either day or month')
 ];
 
 // Validation rules for property update
@@ -88,7 +94,13 @@ const updatePropertyValidation = [
     .isArray().withMessage('Images must be an array'),
   body('available')
     .optional()
-    .isBoolean().withMessage('Available must be a boolean')
+    .isBoolean().withMessage('Available must be a boolean'),
+  body('showingOnHome')
+    .optional()
+    .isBoolean().withMessage('Showing on home must be a boolean'),
+  body('reservedWith')
+    .optional()
+    .isIn(['day', 'month']).withMessage('Reserved with must be either day or month')
 ];
 
 // POST /api/admin/properties - Create new property
@@ -185,6 +197,12 @@ router.get('/',
       }
       if (available !== undefined) {
         filter.available = available === 'true';
+      }
+      if (showingOnHome !== undefined) {
+        filter.showingOnHome = showingOnHome === 'true';
+      }
+      if (reservedWith) {
+        filter.reservedWith = reservedWith;
       }
 
       const properties = await Property.find(filter)

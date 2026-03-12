@@ -165,8 +165,8 @@ router.get('/properties',
     try {
       console.log('Public properties API called');
 
-      // Get available properties (available: true, regardless of isReserved)
-      const properties = await Property.find({ available: true })
+      // Get available properties (available: true, showingOnHome: true, regardless of isReserved)
+      const properties = await Property.find({ available: true, showingOnHome: true })
         .populate('wilayaId', 'name')
         .populate('officeId', 'name')
         .populate('reservationId', 'endDate')

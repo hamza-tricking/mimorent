@@ -170,7 +170,7 @@ router.get('/properties',
       const properties = await Property.find({ available: true })
         .populate('wilayaId', 'name')
         .populate('officeId', 'name')
-        .populate('reservationId', 'endDate')
+        .populate('reservationIds', 'endDate')
         .sort({ createdAt: -1 });
 
       console.log('Available properties found:', properties.length);
@@ -183,10 +183,21 @@ router.get('/properties',
         // Also check for active reservations as backup
         const isCurrentlyReserved = propertyObj.isReserved === true;
         
-        // If property is marked as reserved, try to get reservation end date
-        if (isCurrentlyReserved && property.reservationId) {
-          // Try to get the reservation data if reservationId exists
-          propertyObj.reservationEndDate = property.reservationId.endDate || null;
+        // If property is marked as reserved, try to get the earliest reservation end date
+        if (isCurrentlyReserved && property.reservationIds && property.reservationIds.length > 0) {
+          // Get the earliest end date from all reservations
+          const activeReservations = property.reservationIds.filter(reservation => 
+            reservation && reservation.endDate && new Date(reservation.endDate) > new Date()
+          );
+          
+          if (activeReservations.length > 0) {
+            const earliestEndDate = activeReservations.reduce((earliest, current) => 
+              new Date(current.endDate) < new Date(earliest.endDate) ? current : earliest
+            );
+            propertyObj.reservationEndDate = earliestEndDate.endDate;
+          } else {
+            propertyObj.reservationEndDate = null;
+          }
         } else {
           propertyObj.reservationEndDate = null;
         }

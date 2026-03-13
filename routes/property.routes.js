@@ -191,7 +191,7 @@ router.get('/',
         .populate([
           { path: 'wilayaId', select: 'name code' },
           { path: 'officeId', select: 'name code' },
-          { path: 'reservationId', select: 'customerName customerPhone status startDate endDate totalPrice' }
+          { path: 'reservationIds', select: 'customerName customerPhone status startDate endDate totalPrice' }
         ])
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -225,7 +225,7 @@ router.get('/:id',
         .populate([
           { path: 'wilayaId', select: 'name code' },
           { path: 'officeId', select: 'name code' },
-          { path: 'reservationId', select: 'customerName customerPhone status startDate endDate totalPrice' }
+          { path: 'reservationIds', select: 'customerName customerPhone status startDate endDate totalPrice' }
         ]);
       
       if (!property) {
@@ -300,17 +300,17 @@ router.put('/:id',
       if (available !== undefined) updateData.available = available;
       
       // Get current reservation data before updating if making property available
-      let currentReservation = null;
-      if (isReserved === false && property.reservationId) {
-        currentReservation = await Property.findById(property._id)
-          .populate('reservationId', 'customerName customerPhone status startDate endDate totalPrice paidAmount remainingAmount paymentStatus');
+      let currentReservations = [];
+      if (isReserved === false && property.reservationIds && property.reservationIds.length > 0) {
+        currentReservations = await Property.findById(property._id)
+          .populate('reservationIds', 'customerName customerPhone status startDate endDate totalPrice paidAmount remainingAmount paymentStatus');
       }
       
       if (isReserved !== undefined) {
         updateData.isReserved = isReserved;
-        // If making property available, clear the reservationId
+        // If making property available, clear all reservationIds
         if (isReserved === false) {
-          updateData.reservationId = null;
+          updateData.reservationIds = [];
         }
       }
 
@@ -327,7 +327,7 @@ router.put('/:id',
       await updatedProperty.populate([
         { path: 'wilayaId', select: 'name code' },
         { path: 'officeId', select: 'name code' },
-        { path: 'reservationId', select: 'customerName customerPhone status startDate endDate totalPrice' }
+        { path: 'reservationIds', select: 'customerName customerPhone status startDate endDate totalPrice' }
       ]);
 
       // Create notification when property is made available
@@ -357,15 +357,15 @@ router.put('/:id',
               createdById: req.user._id,
               createdByName: creatorName,
               createdAt: new Date(),
-              ...(currentReservation?.reservationId && {
-                previousReservation: {
-                  customerName: currentReservation.reservationId.customerName,
-                  customerPhone: currentReservation.reservationId.customerPhone,
-                  status: currentReservation.reservationId.status,
-                  startDate: currentReservation.reservationId.startDate,
-                  endDate: currentReservation.reservationId.endDate,
-                  totalPrice: currentReservation.reservationId.totalPrice
-                }
+              ...(currentReservations?.reservationIds && currentReservations.reservationIds.length > 0 && {
+                previousReservations: currentReservations.reservationIds.map(reservation => ({
+                  customerName: reservation.customerName,
+                  customerPhone: reservation.customerPhone,
+                  status: reservation.status,
+                  startDate: reservation.startDate,
+                  endDate: reservation.endDate,
+                  totalPrice: reservation.totalPrice
+                }))
               })
             }
           };
@@ -394,15 +394,15 @@ router.put('/:id',
                 createdById: req.user._id,
                 createdByName: creatorName,
                 createdAt: new Date(),
-                ...(currentReservation?.reservationId && {
-                  previousReservation: {
-                    customerName: currentReservation.reservationId.customerName,
-                    customerPhone: currentReservation.reservationId.customerPhone,
-                    status: currentReservation.reservationId.status,
-                    startDate: currentReservation.reservationId.startDate,
-                    endDate: currentReservation.reservationId.endDate,
-                    totalPrice: currentReservation.reservationId.totalPrice
-                  }
+                ...(currentReservations?.reservationIds && currentReservations.reservationIds.length > 0 && {
+                  previousReservations: currentReservations.reservationIds.map(reservation => ({
+                    customerName: reservation.customerName,
+                    customerPhone: reservation.customerPhone,
+                    status: reservation.status,
+                    startDate: reservation.startDate,
+                    endDate: reservation.endDate,
+                    totalPrice: reservation.totalPrice
+                  }))
                 })
               },
               ipAddress: req.ip || req.connection.remoteAddress || 'unknown'

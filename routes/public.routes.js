@@ -7,6 +7,7 @@ const Wilaya = require('../models/wilaya.model');
 const Reservation = require('../models/reservation.model');
 const OrdersReservation = require('../models/ordersReservation.model');
 const Notification = require('../models/notification.model');
+const Office = require('../models/office.model');
 console.log('🔔 Notification model loaded in public.routes.js');
 const { body, validationResult } = require('express-validator');
 
@@ -217,6 +218,22 @@ router.get('/wilayas',
     } catch (error) {
       console.error('Get wilayas error:', error);
       sendError(res, 'Failed to retrieve wilayas', 500, error.message);
+    }
+  })
+);
+
+// GET /api/offices - Get all offices (public)
+router.get('/offices',
+  asyncHandler(async (req, res) => {
+    try {
+      const offices = await Office.find()
+        .populate('wilayaId', 'name')
+        .sort({ name: 1 });
+
+      sendSuccess(res, 'Offices retrieved successfully', { offices });
+    } catch (error) {
+      console.error('Get offices error:', error);
+      sendError(res, 'Failed to retrieve offices', 500, error.message);
     }
   })
 );

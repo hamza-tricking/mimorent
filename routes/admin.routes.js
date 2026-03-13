@@ -12,6 +12,7 @@ const Wilaya = require('../models/wilaya.model');
 const Reservation = require('../models/reservation.model');
 const History = require('../models/history.model');
 const OrdersReservation = require('../models/ordersReservation.model');
+const AdminSettings = require('../models/adminSettings.model');
 const { body, validationResult } = require('express-validator');
 
 // Import route modules
@@ -940,6 +941,46 @@ router.get('/history',
       sendSuccess(res, 'History retrieved successfully', result);
     } catch (error) {
       sendError(res, 'Failed to retrieve history', error);
+    }
+  })
+);
+
+// GET /api/admin/settings - Get admin settings
+router.get('/settings',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const settings = await AdminSettings.getSettings();
+      sendSuccess(res, 'Settings retrieved successfully', settings);
+    } catch (error) {
+      sendError(res, 'Failed to retrieve settings', error);
+    }
+  })
+);
+
+// PUT /api/admin/settings/auto-accept - Update auto-accept orders setting
+router.put('/settings/auto-accept',
+  auth,
+  adminOnly,
+  [
+    body('autoAcceptOrders')
+      .isBoolean()
+      .withMessage('autoAcceptOrders must be a boolean')
+  ],
+  asyncHandler(async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return sendError(res, 'Validation failed', errors.array());
+      }
+
+      const { autoAcceptOrders } = req.body;
+      const settings = await AdminSettings.updateAutoAcceptOrders(autoAcceptOrders);
+      
+      sendSuccess(res, 'Auto-accept setting updated successfully', settings);
+    } catch (error) {
+      sendError(res, 'Failed to update auto-accept setting', error);
     }
   })
 );

@@ -95,10 +95,10 @@ const propertySchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  reservationId: {
+  reservationIds: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Reservation'
-  }
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -113,6 +113,7 @@ propertySchema.index({ pricePerDay: 1 });
 propertySchema.index({ isReserved: 1 });
 propertySchema.index({ available: 1 });
 propertySchema.index({ location: 'text' });
+propertySchema.index({ reservationIds: 1 });
 
 // Static method to find available properties
 propertySchema.statics.findAvailable = function(filters = {}) {
@@ -128,7 +129,61 @@ propertySchema.statics.findByWilaya = function(wilayaId) {
 propertySchema.methods.updateReservationStatus = async function() {
   const Reservation = mongoose.model('Reservation');
   const activeReservations = await Reservation.countDocuments({
-    propertyId: this._id,
+    _id: { $in: this.reservationIds },
+    status: { $in: ['pending', 'confirmed'] }
+  });
+  
+  this.isReserved = activeReservations > 0;
+  return this.save();
+};
+
+// Method to check if property is available for given date range
+propertySchema.methods.isAvailableForDates = async function(startDate, endDate) {
+  const Reservation = mongoose.model('Reservation');
+  const overlappingReservations = await Reservation.find({
+    _id: { $in: this.reservationIds },
+    status: { $in: ['pending', 'confirmed'] },
+    $or: [
+      {
+        startDate: { $lte: new Date(endDate) },
+        endDate: { $gte: new Date(startDate) }
+      }
+    ]
+  });
+  
+  return overlappingReservations.length === 0;
+};
+
+// Method to add a reservation if no overlap exists
+propertySchema.methods.addReservation = async function(reservationId) {
+  if (!this.reservationIds) {
+    this.reservationIds = [];
+  }
+  
+  // Check if reservation already exists
+  if (this.reservationIds.includes(reservationId)) {
+    throw new Error('Reservation already exists for this property');
+  }
+  
+  // Add the reservation
+  this.reservationIds.push(reservationId);
+  this.isReserved = true;
+  
+  return this.save();
+};
+
+// Method to remove a reservation
+propertySchema.methods.removeReservation = async function(reservationId) {
+  if (!this.reservationIds) {
+    return this;
+  }
+  
+  this.reservationIds = this.reservationIds.filter(id => !id.equals(reservationId));
+  
+  // Update isReserved status based on remaining reservations
+  const Reservation = mongoose.model('Reservation');
+  const activeReservations = await Reservation.countDocuments({
+    _id: { $in: this.reservationIds },
     status: { $in: ['pending', 'confirmed'] }
   });
   

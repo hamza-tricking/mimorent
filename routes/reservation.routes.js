@@ -401,28 +401,34 @@ router.put('/:id',
       if (startDate || endDate) {
         const newStartDate = startDate ? new Date(startDate) : reservation.startDate;
         const newEndDate = endDate ? new Date(endDate) : reservation.endDate;
+        
+        // Only check for overlaps if the dates are actually being changed
+        const datesChanged = (startDate && new Date(startDate).getTime() !== reservation.startDate.getTime()) ||
+                          (endDate && new Date(endDate).getTime() !== reservation.endDate.getTime());
+        
+        if (datesChanged) {
+          const existingReservations = await Reservation.find({
+            propertyId: reservation.propertyId,
+            status: { $in: ['pending', 'confirmed'] },
+            _id: { $ne: reservationId }, // Exclude current reservation
+            $or: [
+              {
+                startDate: { $lte: newEndDate },
+                endDate: { $gte: newStartDate }
+              }
+            ]
+          });
 
-        const existingReservations = await Reservation.find({
-          propertyId: reservation.propertyId,
-          status: { $in: ['pending', 'confirmed'] },
-          _id: { $ne: reservationId }, // Exclude current reservation
-          $or: [
-            {
-              startDate: { $lte: newEndDate },
-              endDate: { $gte: newStartDate }
-            }
-          ]
-        });
-
-        if (existingReservations.length > 0) {
-          const conflictingReservation = existingReservations[0];
-          const conflictStart = new Date(conflictingReservation.startDate).toLocaleDateString('ar-DZ');
-          const conflictEnd = new Date(conflictingReservation.endDate).toLocaleDateString('ar-DZ');
-          return sendError(
-            res, 
-            `هذا العقار محجوز بالفعل في الفترة من ${conflictStart} إلى ${conflictEnd}. الرجاء اختيار فترة أخرى.`,
-            409
-          );
+          if (existingReservations.length > 0) {
+            const conflictingReservation = existingReservations[0];
+            const conflictStart = new Date(conflictingReservation.startDate).toLocaleDateString('ar-DZ');
+            const conflictEnd = new Date(conflictingReservation.endDate).toLocaleDateString('ar-DZ');
+            return sendError(
+              res, 
+              `هذا العقار محجوز بالفعل في الفترة من ${conflictStart} إلى ${conflictEnd}. الرجاء اختيار فترة أخرى.`,
+              409
+            );
+          }
         }
       }
 

@@ -59,7 +59,17 @@ const createPropertyValidation = [
     .isIn(['daily', 'monthly']).withMessage('Reservation type must be daily or monthly'),
   body('locationGoogleMapLink')
     .optional()
-    .isURL().withMessage('Location Google Map link must be a valid URL')
+    .custom((value) => {
+      if (!value || value.trim() === '') {
+        return true; // Allow empty values
+      }
+      // Only validate URL if value is not empty
+      const urlRegex = /^https?:\/\/.+/;
+      if (!urlRegex.test(value)) {
+        throw new Error('Location Google Map link must be a valid URL');
+      }
+      return true;
+    })
     .trim(),
   body('priceBeforeDiscountPerDay')
     .optional()
@@ -111,7 +121,17 @@ const updatePropertyValidation = [
     .isIn(['daily', 'monthly']).withMessage('Reservation type must be daily or monthly'),
   body('locationGoogleMapLink')
     .optional()
-    .isURL().withMessage('Location Google Map link must be a valid URL')
+    .custom((value) => {
+      if (!value || value.trim() === '') {
+        return true; // Allow empty values
+      }
+      // Only validate URL if value is not empty
+      const urlRegex = /^https?:\/\/.+/;
+      if (!urlRegex.test(value)) {
+        throw new Error('Location Google Map link must be a valid URL');
+      }
+      return true;
+    })
     .trim(),
   body('priceBeforeDiscountPerDay')
     .optional()

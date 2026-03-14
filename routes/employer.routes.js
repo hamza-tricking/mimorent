@@ -310,7 +310,11 @@ router.post('/reservations',
         paidAmount,
         remainingAmount,
         paymentStatus,
-        employerId 
+        employerId,
+        isMarried,
+        numberOfPeople,
+        identityImages,
+        notes
       } = req.body;
 
       // Check if property exists and is available
@@ -335,7 +339,11 @@ router.post('/reservations',
         paidAmount,
         remainingAmount,
         paymentStatus: paymentStatus || 'pending',
-        status: 'pending'
+        status: 'pending',
+        isMarried,
+        numberOfPeople,
+        identityImages: identityImages || [],
+        notes: notes || []
       });
 
       await reservation.save();
@@ -482,7 +490,11 @@ router.put('/reservations/:id',
         paidAmount,
         remainingAmount,
         paymentStatus,
-        status 
+        status,
+        isMarried,
+        numberOfPeople,
+        identityImages,
+        notes
       } = req.body;
       const reservationId = req.params.id;
 
@@ -502,6 +514,10 @@ router.put('/reservations/:id',
       if (remainingAmount !== undefined) reservation.remainingAmount = remainingAmount;
       if (paymentStatus) reservation.paymentStatus = paymentStatus;
       if (status) reservation.status = status;
+      if (isMarried !== undefined) reservation.isMarried = isMarried;
+      if (numberOfPeople !== undefined) reservation.numberOfPeople = numberOfPeople;
+      if (identityImages !== undefined) reservation.identityImages = identityImages;
+      if (notes !== undefined) reservation.notes = notes;
       // Note: employerId is intentionally not updated to preserve the original creator
 
       await reservation.save();

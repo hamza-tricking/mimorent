@@ -47,7 +47,39 @@ const createReservationValidation = [
     .isIn(['pending', 'partial', 'paid']).withMessage('Invalid payment status'),
   body('status')
     .optional()
-    .isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid status')
+    .isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid status'),
+  body('isMarried')
+    .notEmpty().withMessage('Marital status is required')
+    .isBoolean().withMessage('Marital status must be a boolean'),
+  body('numberOfPeople')
+    .notEmpty().withMessage('Number of people is required')
+    .isInt({ min: 1 }).withMessage('Number of people must be at least 1'),
+  body('identityImages')
+    .optional()
+    .isArray().withMessage('Identity images must be an array')
+    .custom((value) => {
+      if (value && value.length > 0) {
+        for (const img of value) {
+          if (typeof img !== 'string') {
+            throw new Error('All identity images must be strings');
+          }
+        }
+      }
+      return true;
+    }),
+  body('notes')
+    .optional()
+    .isArray().withMessage('Notes must be an array')
+    .custom((value) => {
+      if (value && value.length > 0) {
+        for (const note of value) {
+          if (typeof note !== 'string') {
+            throw new Error('All notes must be strings');
+          }
+        }
+      }
+      return true;
+    })
 ];
 
 // Validation rules for reservation update
@@ -83,7 +115,39 @@ const updateReservationValidation = [
     .isIn(['pending', 'partial', 'paid']).withMessage('Invalid payment status'),
   body('status')
     .optional()
-    .isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid status')
+    .isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid status'),
+  body('isMarried')
+    .optional()
+    .isBoolean().withMessage('Marital status must be a boolean'),
+  body('numberOfPeople')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Number of people must be at least 1'),
+  body('identityImages')
+    .optional()
+    .isArray().withMessage('Identity images must be an array')
+    .custom((value) => {
+      if (value && value.length > 0) {
+        for (const img of value) {
+          if (typeof img !== 'string') {
+            throw new Error('All identity images must be strings');
+          }
+        }
+      }
+      return true;
+    }),
+  body('notes')
+    .optional()
+    .isArray().withMessage('Notes must be an array')
+    .custom((value) => {
+      if (value && value.length > 0) {
+        for (const note of value) {
+          if (typeof note !== 'string') {
+            throw new Error('All notes must be strings');
+          }
+        }
+      }
+      return true;
+    })
 ];
 
 // POST /api/admin/reservations - Create new reservation
@@ -109,7 +173,11 @@ router.post('/',
         remainingAmount,
         paymentStatus,
         status,
-        employerId 
+        employerId,
+        isMarried,
+        numberOfPeople,
+        identityImages,
+        notes
       } = req.body;
 
       // Check if property exists and is available
@@ -161,7 +229,11 @@ router.post('/',
         paidAmount,
         remainingAmount,
         paymentStatus: paymentStatus || 'pending',
-        status: status || 'pending'
+        status: status || 'pending',
+        isMarried,
+        numberOfPeople,
+        identityImages: identityImages || [],
+        notes: notes || []
       });
 
       await reservation.save();
@@ -387,7 +459,11 @@ router.put('/:id',
         paidAmount,
         remainingAmount,
         paymentStatus,
-        status 
+        status,
+        isMarried,
+        numberOfPeople,
+        identityImages,
+        notes
       } = req.body;
       const reservationId = req.params.id;
 
@@ -442,6 +518,10 @@ router.put('/:id',
       if (remainingAmount !== undefined) reservation.remainingAmount = remainingAmount;
       if (paymentStatus) reservation.paymentStatus = paymentStatus;
       if (status) reservation.status = status;
+      if (isMarried !== undefined) reservation.isMarried = isMarried;
+      if (numberOfPeople !== undefined) reservation.numberOfPeople = numberOfPeople;
+      if (identityImages !== undefined) reservation.identityImages = identityImages;
+      if (notes !== undefined) reservation.notes = notes;
 
       await reservation.save();
 

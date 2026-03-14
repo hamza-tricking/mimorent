@@ -62,7 +62,24 @@ const reservationSchema = new mongoose.Schema({
   notificationSent: {
     type: Boolean,
     default: false
-  }
+  },
+  isMarried: {
+    type: Boolean,
+    required: [true, 'Marital status is required']
+  },
+  numberOfPeople: {
+    type: Number,
+    required: [true, 'Number of people is required'],
+    min: [1, 'Number of people must be at least 1']
+  },
+  identityImages: [{
+    type: String,
+    required: false
+  }],
+  notes: [{
+    type: String,
+    required: false
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

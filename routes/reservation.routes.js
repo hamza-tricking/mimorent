@@ -180,15 +180,13 @@ router.post('/',
         notes
       } = req.body;
 
-      // Check if property exists and is available
+      // Check if property exists
       const property = await Property.findById(propertyId);
       if (!property) {
         return sendError(res, 'Property not found', 404);
       }
 
-      if (!property.available) {
-        return sendError(res, 'Property is not available for reservation', 400);
-      }
+      // Don't check availability for new reservations - overlap check will handle conflicts
 
       // Check for overlapping reservations using property's reservationIds array
       // First get the property with its reservationIds

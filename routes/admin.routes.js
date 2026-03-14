@@ -337,6 +337,14 @@ router.get('/properties',
       }
 
       const properties = await Property.find(filter)
+        .populate([
+          { path: 'wilayaId', select: 'name code' },
+          { path: 'officeId', select: 'name code' },
+          { 
+            path: 'reservationIds', 
+            select: 'customerName customerPhone status startDate endDate totalPrice paidAmount remainingAmount paymentStatus employerId'
+          }
+        ])
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);

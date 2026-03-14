@@ -306,7 +306,7 @@ router.post('/',
         { 
           $addToSet: { reservationIds: reservation._id }, // Add to array if not already present
           isReserved: true,
-          available: false
+      
         },
         { new: true }
       );

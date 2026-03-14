@@ -190,29 +190,40 @@ router.post('/',
         return sendError(res, 'Property is not available for reservation', 400);
       }
 
-      // Check for overlapping reservations (only if this is a new reservation, not an update)
-      // For new reservations, we should check for any existing reservations that overlap
-      const existingReservations = await Reservation.find({
-        propertyId: propertyId,
-        status: { $in: ['pending', 'confirmed'] },
-        $or: [
-          {
-            // New reservation starts during an existing reservation
-            startDate: { $lte: new Date(endDate) },
-            endDate: { $gte: new Date(startDate) }
-          }
-        ]
-      });
+      // Check for overlapping reservations using property's reservationIds array
+      // First get the property with its reservationIds
+      const propertyWithReservations = await Property.findById(propertyId)
+        .populate({
+          path: 'reservationIds',
+          match: { status: { $in: ['pending', 'confirmed'] } }
+        });
 
-      if (existingReservations.length > 0) {
-        const conflictingReservation = existingReservations[0];
-        const conflictStart = new Date(conflictingReservation.startDate).toLocaleDateString('ar-DZ');
-        const conflictEnd = new Date(conflictingReservation.endDate).toLocaleDateString('ar-DZ');
-        return sendError(
-          res, 
-          `هذا العقار محجوز بالفعل في الفترة من ${conflictStart} إلى ${conflictEnd}. الرجاء اختيار فترة أخرى.`,
-          409
-        );
+      if (!propertyWithReservations) {
+        return sendError(res, 'Property not found', 404);
+      }
+
+      // Check for overlapping reservations among the property's existing reservations
+      const existingReservations = propertyWithReservations.reservationIds || [];
+      
+      for (const existingReservation of existingReservations) {
+        const existingStart = new Date(existingReservation.startDate);
+        const existingEnd = new Date(existingReservation.endDate);
+        const newStart = new Date(startDate);
+        const newEnd = new Date(endDate);
+
+        // Check if dates overlap
+        if (
+          (newStart <= existingEnd && newEnd >= existingStart) ||
+          (existingStart <= newEnd && existingEnd >= newStart)
+        ) {
+          const conflictStart = existingReservation.startDate.toLocaleDateString('ar-DZ');
+          const conflictEnd = existingReservation.endDate.toLocaleDateString('ar-DZ');
+          return sendError(
+            res, 
+            `هذا العقار محجوز بالفعل في الفترة من ${conflictStart} إلى ${conflictEnd}. الرجاء اختيار فترة أخرى.`,
+            409
+          );
+        }
       }
 
       // For admin reservations, use provided employerId or leave it null
@@ -485,27 +496,36 @@ router.put('/:id',
                           (endDate && new Date(endDate).getTime() !== reservation.endDate.getTime());
         
         if (datesChanged) {
-          const existingReservations = await Reservation.find({
-            propertyId: reservation.propertyId,
-            status: { $in: ['pending', 'confirmed'] },
-            _id: { $ne: reservationId }, // Exclude current reservation
-            $or: [
-              {
-                startDate: { $lte: newEndDate },
-                endDate: { $gte: newStartDate }
+          // Get property with its reservationIds array
+          const propertyWithReservations = await Property.findById(reservation.propertyId)
+            .populate({
+              path: 'reservationIds',
+              match: { 
+                status: { $in: ['pending', 'confirmed'] },
+                _id: { $ne: reservationId } // Exclude current reservation
               }
-            ]
-          });
+            });
 
-          if (existingReservations.length > 0) {
-            const conflictingReservation = existingReservations[0];
-            const conflictStart = new Date(conflictingReservation.startDate).toLocaleDateString('ar-DZ');
-            const conflictEnd = new Date(conflictingReservation.endDate).toLocaleDateString('ar-DZ');
-            return sendError(
-              res, 
-              `هذا العقار محجوز بالفعل في الفترة من ${conflictStart} إلى ${conflictEnd}. الرجاء اختيار فترة أخرى.`,
-              409
-            );
+          const existingReservations = propertyWithReservations?.reservationIds || [];
+          
+          // Check for overlapping reservations
+          for (const existingReservation of existingReservations) {
+            const existingStart = new Date(existingReservation.startDate);
+            const existingEnd = new Date(existingReservation.endDate);
+
+            // Check if dates overlap
+            if (
+              (newStartDate <= existingEnd && newEndDate >= existingStart) ||
+              (existingStart <= newEndDate && existingEnd >= newStartDate)
+            ) {
+              const conflictStart = existingReservation.startDate.toLocaleDateString('ar-DZ');
+              const conflictEnd = existingReservation.endDate.toLocaleDateString('ar-DZ');
+              return sendError(
+                res, 
+                `هذا العقار محجوز بالفعل في الفترة من ${conflictStart} إلى ${conflictEnd}. الرجاء اختيار فترة أخرى.`,
+                409
+              );
+            }
           }
         }
       }

@@ -780,4 +780,61 @@ router.get('/employer/:employerId',
   })
 );
 
+// PUT /api/admin/reservations/:id/complete - Complete reservation and remove from property
+router.put('/:id/complete',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const reservationId = req.params.id;
+
+      // Check if reservation exists
+      const reservation = await Reservation.findById(reservationId);
+      if (!reservation) {
+        return sendError(res, 'Reservation not found', 404);
+      }
+
+      // Check if reservation is already completed
+      if (reservation.status === 'completed') {
+        return sendError(res, 'Reservation is already completed', 400);
+      }
+
+      // Update reservation status to completed
+      reservation.status = 'completed';
+      await reservation.save();
+
+      // Remove reservation from property's reservationIds array
+      await Property.findByIdAndUpdate(
+        reservation.propertyId,
+        { $pull: { reservationIds: reservationId } }
+      );
+
+      // Create history record
+      await History.create({
+        action: 'complete_reservation',
+        targetId: reservationId,
+        targetType: 'Reservation',
+        userId: req.user.id,
+        userType: req.user.role,
+        details: {
+          reservationId: reservationId,
+          propertyId: reservation.propertyId,
+          customerName: reservation.customerName,
+          previousStatus: 'pending', // or whatever the previous status was
+          newStatus: 'completed'
+        }
+      });
+
+      return sendSuccess(res, 'Reservation completed successfully and removed from property', {
+        reservationId: reservationId,
+        status: 'completed'
+      });
+
+    } catch (error) {
+      console.error('Error completing reservation:', error);
+      return sendError(res, 'Failed to complete reservation', 500);
+    }
+  })
+);
+
 module.exports = router;

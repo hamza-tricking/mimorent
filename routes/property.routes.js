@@ -53,7 +53,24 @@ const createPropertyValidation = [
     }),
   body('available')
     .optional()
-    .isBoolean().withMessage('Available must be a boolean')
+    .isBoolean().withMessage('Available must be a boolean'),
+  body('reserveTheProperty')
+    .optional()
+    .isIn(['daily', 'monthly']).withMessage('Reservation type must be daily or monthly'),
+  body('locationGoogleMapLink')
+    .optional()
+    .isURL().withMessage('Location Google Map link must be a valid URL')
+    .trim(),
+  body('priceBeforeDiscountPerDay')
+    .optional()
+    .isNumeric().withMessage('Price before discount must be a number')
+    .isFloat({ min: 0 }).withMessage('Price before discount cannot be negative'),
+  body('capacity')
+    .optional()
+    .isInt({ min: 1, max: 50 }).withMessage('Capacity must be between 1 and 50 persons'),
+  body('targetAudience')
+    .optional()
+    .isIn(['family', 'normal', 'both']).withMessage('Target audience must be family, normal, or both')
 ];
 
 // Validation rules for property update
@@ -88,7 +105,24 @@ const updatePropertyValidation = [
     .isArray().withMessage('Images must be an array'),
   body('available')
     .optional()
-    .isBoolean().withMessage('Available must be a boolean')
+    .isBoolean().withMessage('Available must be a boolean'),
+  body('reserveTheProperty')
+    .optional()
+    .isIn(['daily', 'monthly']).withMessage('Reservation type must be daily or monthly'),
+  body('locationGoogleMapLink')
+    .optional()
+    .isURL().withMessage('Location Google Map link must be a valid URL')
+    .trim(),
+  body('priceBeforeDiscountPerDay')
+    .optional()
+    .isNumeric().withMessage('Price before discount must be a number')
+    .isFloat({ min: 0 }).withMessage('Price before discount cannot be negative'),
+  body('capacity')
+    .optional()
+    .isInt({ min: 1, max: 50 }).withMessage('Capacity must be between 1 and 50 persons'),
+  body('targetAudience')
+    .optional()
+    .isIn(['family', 'normal', 'both']).withMessage('Target audience must be family, normal, or both')
 ];
 
 // POST /api/admin/properties - Create new property
@@ -103,7 +137,7 @@ router.post('/',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, location, propertyType, pricePerDay, wilayaId, officeId, images, available } = req.body;
+      const { title, description, location, propertyType, pricePerDay, wilayaId, officeId, images, available, reserveTheProperty, locationGoogleMapLink, priceBeforeDiscountPerDay, capacity, targetAudience } = req.body;
 
       // Check if wilaya exists
       const wilaya = await Wilaya.findById(wilayaId);
@@ -131,7 +165,12 @@ router.post('/',
         wilayaId, 
         officeId,
         images: images || [],
-        available: available !== undefined ? available : true
+        available: available !== undefined ? available : true,
+        reserveTheProperty: reserveTheProperty || 'daily',
+        locationGoogleMapLink: locationGoogleMapLink || '',
+        priceBeforeDiscountPerDay: priceBeforeDiscountPerDay || undefined,
+        capacity,
+        targetAudience: targetAudience || 'both'
       });
       
       await property.save();
@@ -252,7 +291,7 @@ router.put('/:id',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, location, propertyType, pricePerDay, wilayaId, officeId, images, available, isReserved } = req.body;
+      const { title, description, location, propertyType, pricePerDay, wilayaId, officeId, images, available, isReserved, reserveTheProperty, locationGoogleMapLink, priceBeforeDiscountPerDay, capacity, targetAudience } = req.body;
       const propertyId = req.params.id;
 
       // Check if property exists
@@ -298,6 +337,11 @@ router.put('/:id',
       if (pricePerDay) updateData.pricePerDay = pricePerDay;
       if (images) updateData.images = images;
       if (available !== undefined) updateData.available = available;
+      if (reserveTheProperty) updateData.reserveTheProperty = reserveTheProperty;
+      if (locationGoogleMapLink !== undefined) updateData.locationGoogleMapLink = locationGoogleMapLink;
+      if (priceBeforeDiscountPerDay !== undefined) updateData.priceBeforeDiscountPerDay = priceBeforeDiscountPerDay;
+      if (capacity) updateData.capacity = capacity;
+      if (targetAudience) updateData.targetAudience = targetAudience;
       
       // Get current reservation data before updating if making property available
       let currentReservations = [];

@@ -98,7 +98,50 @@ const propertySchema = new mongoose.Schema({
   reservationIds: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Reservation'
-  }]
+  }],
+  reserveTheProperty: {
+    type: String,
+    enum: {
+      values: ['daily', 'monthly'],
+      message: 'Reservation type must be daily or monthly'
+    },
+    default: 'daily'
+  },
+  locationGoogleMapLink: {
+    type: String,
+    required: false,
+    trim: true,
+    validate: {
+      validator: function(value) {
+        if (!value) return true; // Optional field
+        // Basic URL validation for Google Maps links
+        try {
+          const url = new URL(value);
+          return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch {
+          return false;
+        }
+      },
+      message: 'Location Google Map link must be a valid URL'
+    }
+  },
+  priceBeforeDiscountPerDay: {
+    type: Number,
+    min: [0, 'Price before discount cannot be negative']
+  },
+  capacity: {
+    type: Number,
+    min: [1, 'Capacity must be at least 1 person'],
+    max: [50, 'Capacity cannot exceed 50 persons']
+  },
+  targetAudience: {
+    type: String,
+    enum: {
+      values: ['family', 'normal', 'both'],
+      message: 'Target audience must be family, normal, or both'
+    },
+    default: 'both'
+  }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

@@ -190,7 +190,8 @@ router.post('/',
         return sendError(res, 'Property is not available for reservation', 400);
       }
 
-      // Check for overlapping reservations
+      // Check for overlapping reservations (only if this is a new reservation, not an update)
+      // For new reservations, we should check for any existing reservations that overlap
       const existingReservations = await Reservation.find({
         propertyId: propertyId,
         status: { $in: ['pending', 'confirmed'] },
@@ -293,7 +294,8 @@ router.post('/',
         propertyId,
         { 
           $addToSet: { reservationIds: reservation._id }, // Add to array if not already present
-          isReserved: true
+          isReserved: true,
+          available: false
         },
         { new: true }
       );

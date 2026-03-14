@@ -811,18 +811,20 @@ router.put('/:id/complete',
 
       // Create history record
       await History.create({
-        action: 'complete_reservation',
-        targetId: reservationId,
-        targetType: 'Reservation',
+        action: 'reservation_completed',
+        entityType: 'reservation',
+        entityId: reservationId,
         userId: req.user.id,
-        userType: req.user.role,
-        details: {
+        description: `Reservation completed for ${reservation.customerName}`,
+        metadata: {
           reservationId: reservationId,
           propertyId: reservation.propertyId,
           customerName: reservation.customerName,
-          previousStatus: 'pending', // or whatever the previous status was
+          previousStatus: reservation.status,
           newStatus: 'completed'
-        }
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
       });
 
       return sendSuccess(res, 'Reservation completed successfully and removed from property', {

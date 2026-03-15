@@ -264,8 +264,27 @@ router.get('/reservations',
         .sort({ createdAt: -1 });
 
       console.log('🟢 Found all reservations:', reservations.length);
+      
+      // Log a sample reservation to check structure
+      if (reservations.length > 0) {
+        console.log('📋 Sample reservation structure:', {
+          _id: reservations[0]._id,
+          totalPrice: reservations[0].totalPrice,
+          paidAmount: reservations[0].paidAmount,
+          remainingAmount: reservations[0].remainingAmount,
+          propertyId: reservations[0].propertyId
+        });
+      }
 
-      sendSuccess(res, 'Reservations retrieved successfully', { reservations });
+      sendSuccess(res, 'Reservations retrieved successfully', {
+        data: reservations,
+        pagination: {
+          page: 1,
+          limit: reservations.length,
+          total: reservations.length,
+          pages: 1
+        }
+      });
     } catch (error) {
       console.error('Get reservations error:', error);
       sendError(res, 'Failed to retrieve reservations', 500, error.message);

@@ -305,7 +305,15 @@ router.get('/reservations/employer/:employerId',
         .populate('propertyId', 'title description pricePerDay')
         .sort({ createdAt: -1 });
 
-      sendSuccess(res, 'Reservations retrieved successfully', { reservations });
+      sendSuccess(res, 'Reservations retrieved successfully', {
+        data: reservations,
+        pagination: {
+          page: 1,
+          limit: reservations.length,
+          total: reservations.length,
+          pages: 1
+        }
+      });
     } catch (error) {
       console.error('Get reservations by employer error:', error);
       sendError(res, 'Failed to retrieve reservations', 500, error.message);

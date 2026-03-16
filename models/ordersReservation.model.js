@@ -95,7 +95,33 @@ const ordersReservationSchema = new mongoose.Schema({
     type: String,
     enum: ['low', 'medium', 'high'],
     default: 'medium'
-  }
+  },
+  
+  // Total price for the reservation
+  totalPrice: {
+    type: Number,
+    required: [true, 'Total price is required'],
+    min: [0, 'Total price must be at least 0']
+  },
+  
+  // Marital status
+  isMarried: {
+    type: Boolean,
+    required: [true, 'Marital status is required']
+  },
+  
+  // Number of people for the reservation
+  numberOfPeople: {
+    type: Number,
+    required: [true, 'Number of people is required'],
+    min: [1, 'Number of people must be at least 1']
+  },
+  
+  // Identity images for verification
+  identityImages: [{
+    type: String,
+    required: false
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

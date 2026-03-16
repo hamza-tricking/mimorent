@@ -54,7 +54,7 @@ const ordersReservationSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Order status is required'],
     enum: ['pending', 'processing', 'approved', 'rejected', 'completed'],
-    default: 'pending'
+    default: 'approve'
   },
   
   // Additional notes from client

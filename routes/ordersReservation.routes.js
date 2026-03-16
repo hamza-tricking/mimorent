@@ -161,25 +161,38 @@ router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
     console.log('🟢 Filter:', filter);
 
     // Execute query with pagination and populate property with isReserved field
+    // Use lean() to avoid Mongoose validation on existing documents
     const orders = await OrdersReservation.find(filter)
       .populate('propertyId', 'title location pricePerDay images isReserved')
       .populate('wilayaId', 'name')
       .populate('employerNotes.employerId', 'firstName lastName username')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .skip((page - 1) * limit)
+      .lean(); // Use lean() to avoid validation
 
     console.log('🟢 Raw orders found:', orders.length);
 
     // Check and update orderType based on property isReserved status
+    // Also add default values for missing fields
     const updatedOrders = await Promise.all(orders.map(async (order) => {
+      // Add default values for missing fields (backward compatibility)
+      if (order.totalPrice === undefined) order.totalPrice = 0;
+      if (order.isMarried === undefined) order.isMarried = false;
+      if (order.numberOfPeople === undefined) order.numberOfPeople = 1;
+      if (order.identityImages === undefined) order.identityImages = [];
+      
       if (order.propertyId && order.propertyId.isReserved !== undefined) {
         const expectedOrderType = order.propertyId.isReserved ? 'reserver_property' : 'notreserver_property';
         
         // Update order if orderType doesn't match property isReserved status
         if (order.orderType !== expectedOrderType) {
+          // Use findOneAndUpdate to avoid validation issues
+          await OrdersReservation.findOneAndUpdate(
+            { _id: order._id },
+            { orderType: expectedOrderType }
+          );
           order.orderType = expectedOrderType;
-          await order.save();
         }
       }
       return order;

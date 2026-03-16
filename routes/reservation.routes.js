@@ -50,17 +50,7 @@ const createReservationValidation = [
     .isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid status'),
   body('isMarried')
     .notEmpty().withMessage('Marital status is required')
-    .custom((value) => {
-      // Accept boolean, string "true"/"false", or number 0/1
-      if (typeof value === 'boolean') return true;
-      if (typeof value === 'string') {
-        return value === 'true' || value === 'false';
-      }
-      if (typeof value === 'number') {
-        return value === 0 || value === 1;
-      }
-      throw new Error('Marital status must be true or false');
-    }),
+    .isBoolean().withMessage('Marital status must be a boolean'),
   body('numberOfPeople')
     .notEmpty().withMessage('Number of people is required')
     .isInt({ min: 1 }).withMessage('Number of people must be at least 1'),
@@ -160,32 +150,10 @@ const updateReservationValidation = [
     })
 ];
 
-// Normalize isMarried field to ensure it's a boolean
-const normalizeIsMarried = (req, res, next) => {
-  if (req.body.isMarried !== undefined) {
-    const value = req.body.isMarried;
-    if (typeof value === 'boolean') {
-      // Already boolean, keep as is
-      req.body.isMarried = value;
-    } else if (typeof value === 'string') {
-      // Convert string to boolean
-      req.body.isMarried = value === 'true';
-    } else if (typeof value === 'number') {
-      // Convert number to boolean
-      req.body.isMarried = value === 1;
-    } else {
-      // Default to false for any other type
-      req.body.isMarried = false;
-    }
-  }
-  next();
-};
-
 // POST /api/admin/reservations - Create new reservation
 router.post('/',
   auth,
   adminOnly,
-  normalizeIsMarried,
   createReservationValidation,
   asyncHandler(async (req, res) => {
     try {

@@ -134,13 +134,19 @@ router.get('/', auth, adminOnly, asyncHandler(async (req, res) => {
 // GET /api/admin/orders-reservation/employer - Get orders for employer
 router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
   try {
+    console.log('🟢 Employer orders request - User:', req.user);
+    console.log('🟢 User officeId:', req.user.officeId);
+    
     const { page = 1, limit = 50, status, orderType, priority } = req.query;
     
     // Get employer's office and wilaya
     const Office = require('../models/office.model');
     const employerOffice = await Office.findById(req.user.officeId);
     
+    console.log('🟢 Employer office found:', employerOffice);
+    
     if (!employerOffice) {
+      console.error('🔴 Employer office not found for officeId:', req.user.officeId);
       return sendError(res, 'Employer office not found', 404);
     }
 
@@ -162,6 +168,8 @@ router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
+
+    console.log('🟢 Raw orders found:', orders.length);
 
     // Check and update orderType based on property isReserved status
     const updatedOrders = await Promise.all(orders.map(async (order) => {
@@ -192,7 +200,8 @@ router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get employer orders error:', error);
+    console.error('🔴 Get employer orders error:', error);
+    console.error('🔴 Error stack:', error.stack);
     sendError(res, 'Failed to retrieve orders', 500);
   }
 }));

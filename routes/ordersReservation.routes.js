@@ -257,6 +257,31 @@ router.post('/', auth, adminOnly, createOrderValidation, asyncHandler(async (req
       return sendError(res, 'Property not found', 404);
     }
 
+    // Additional validation for targetAudience and capacity
+    if (property.targetAudience === 'family' && !isMarried) {
+      return sendError(res, 'هذا العقار مخصص للعائلات فقط. يرجى اختيار "متزوج" للمتابعة.', 400);
+    }
+    
+    if (property.targetAudience === 'normal' && isMarried) {
+      return sendError(res, 'هذا العقار مخصص للأفراد فقط. يرجى اختيار "أعزب" للمتابعة.', 400);
+    }
+    
+    // Check if number of people exceeds property capacity
+    if (property.capacity && numberOfPeople > property.capacity) {
+      return sendError(res, `سعة هذا العقار لا تتجاوز ${property.capacity} أشخاص. يرجى تقليل عدد الأشخاص.`, 400);
+    }
+    
+    // Additional validation for family properties
+    if (property.targetAudience === 'family' && numberOfPeople < 2) {
+      return sendError(res, 'العقارات العائلية تتطلب شخصين على الأقل.', 400);
+    }
+
+    // Validate maximum number of identity images
+    const maxImages = 4;
+    if (identityImages && identityImages.length > maxImages) {
+      return sendError(res, `لا يمكن رفع أكثر من ${maxImages} صور للهوية.`, 400);
+    }
+
     // Validate that wilaya exists
     const wilaya = await Wilaya.findById(wilayaId);
     if (!wilaya) {

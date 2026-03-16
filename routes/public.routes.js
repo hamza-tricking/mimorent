@@ -60,12 +60,13 @@ const createOrderValidation = [
   body('identityImages.*')
     .optional()
     .custom((value) => {
-      // Allow blob URLs or regular URLs
+      // Allow blob URLs, regular URLs, or base64 strings
       if (!value) return true;
       const isBlobUrl = value.startsWith('blob:');
       const isRegularUrl = /^https?:\/\/.+/.test(value);
-      if (!isBlobUrl && !isRegularUrl) {
-        throw new Error('Each identity image must be a valid URL (http, https, or blob)');
+      const isBase64 = value.startsWith('data:image/');
+      if (!isBlobUrl && !isRegularUrl && !isBase64) {
+        throw new Error('Each identity image must be a valid URL (http, https, blob) or base64 image');
       }
       return true;
     })

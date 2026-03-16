@@ -59,7 +59,16 @@ const createOrderValidation = [
     .isArray().withMessage('Identity images must be an array'),
   body('identityImages.*')
     .optional()
-    .isURL().withMessage('Each identity image must be a valid URL')
+    .custom((value) => {
+      // Allow blob URLs or regular URLs
+      if (!value) return true;
+      const isBlobUrl = value.startsWith('blob:');
+      const isRegularUrl = /^https?:\/\/.+/.test(value);
+      if (!isBlobUrl && !isRegularUrl) {
+        throw new Error('Each identity image must be a valid URL (http, https, or blob)');
+      }
+      return true;
+    })
 ];
 
 // Validation rules for order action (approve/reject)

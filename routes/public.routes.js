@@ -42,7 +42,24 @@ const createOrderValidation = [
   body('notes')
     .optional()
     .isLength({ max: 500 }).withMessage('Notes cannot exceed 500 characters')
-    .trim()
+    .trim(),
+  // New validation rules for multi-step modal fields
+  body('isMarried')
+    .notEmpty().withMessage('Marital status is required')
+    .isBoolean().withMessage('Marital status must be boolean'),
+  body('numberOfPeople')
+    .notEmpty().withMessage('Number of people is required')
+    .isInt({ min: 1 }).withMessage('Number of people must be at least 1'),
+  body('totalPrice')
+    .notEmpty().withMessage('Total price is required')
+    .isNumeric().withMessage('Total price must be a number')
+    .isFloat({ min: 0 }).withMessage('Total price must be at least 0'),
+  body('identityImages')
+    .optional()
+    .isArray().withMessage('Identity images must be an array'),
+  body('identityImages.*')
+    .optional()
+    .isURL().withMessage('Each identity image must be a valid URL')
 ];
 
 // POST /api/orders-reservation - Create new order (public endpoint)
@@ -65,7 +82,12 @@ router.post('/orders-reservation', createOrderValidation, asyncHandler(async (re
       endDate,
       orderType = 'notreserver_property',
       priority = 'medium',
-      notes
+      notes,
+      // New fields from multi-step modal
+      isMarried,
+      numberOfPeople,
+      totalPrice,
+      identityImages = []
     } = req.body;
 
     console.log('🔍 Parsed order data:', {
@@ -106,7 +128,12 @@ router.post('/orders-reservation', createOrderValidation, asyncHandler(async (re
       endDate: new Date(endDate),
       orderType,
       priority,
-      notes
+      notes,
+      // Include new fields from multi-step modal
+      isMarried,
+      numberOfPeople,
+      totalPrice,
+      identityImages
     });
 
     console.log('🔍 Created order object:', order);

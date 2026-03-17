@@ -275,11 +275,6 @@ router.get('/properties',
           filter.wilayaId = wilayaId;
         }
 
-        // Reservation status filter
-        if (reservationStatus && reservationStatus !== 'all') {
-          filter.isReserved = reservationStatus === 'reserved';
-        }
-
         // Target audience filter
         if (targetAudience) {
           filter.targetAudience = targetAudience;

@@ -152,13 +152,6 @@ reminderSchema.statics.findDueReminders = async function() {
   const algiersTime = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Algiers" }));
   console.log('🔍 Finding due reminders at:', algiersTime.toISOString());
   
-  // First, let's see all reminders for debugging
-  const allReminders = await this.find({}).populate('reservationId propertyId');
-  console.log('📋 All reminders in database:', allReminders.length);
-  allReminders.forEach(r => {
-    console.log(`  - ${r._id}: ${r.reminderType} - ${r.status} - ${r.reminderDateTime}`);
-  });
-  
   // Find reminders with specific time that are due
   const specificTimeReminders = await this.find({
     reminderType: 'specific_time',
@@ -168,7 +161,7 @@ reminderSchema.statics.findDueReminders = async function() {
   
   console.log('📋 Found specific time reminders:', specificTimeReminders.length);
   specificTimeReminders.forEach(r => {
-    console.log(`  - ${r._id}: ${r.reminderDateTime} (${r.reminderType})`);
+    console.log(`  - ${r._id}: ${r.reminderDateTime} (${r.reminderType}) - reservationId: ${r.reservationId?._id || 'null'}`);
   });
   
   // Find reminders before end that are due
@@ -179,12 +172,16 @@ reminderSchema.statics.findDueReminders = async function() {
   
   console.log('📋 Found before end reminders:', beforeEndReminders.length);
   beforeEndReminders.forEach(r => {
-    console.log(`  - ${r._id}: ${r.daysBeforeEnd} days before end (${r.reminderType})`);
+    console.log(`  - ${r._id}: ${r.daysBeforeEnd} days before end (${r.reminderType}) - reservationId: ${r.reservationId?._id || 'null'}`);
   });
   
   // Filter before end reminders to only include those that are actually due
   const dueBeforeEndReminders = beforeEndReminders.filter(reminder => {
-    if (!reminder.reservationId || !reminder.reservationId.endDate) return false;
+    // Skip reminders with null reservationId
+    if (!reminder.reservationId || !reminder.reservationId.endDate) {
+      console.warn(`⚠️ Skipping reminder ${reminder._id}: missing reservationId or endDate`);
+      return false;
+    }
     
     const endDate = new Date(reminder.reservationId.endDate);
     const reminderDate = new Date(endDate.getTime() - (reminder.daysBeforeEnd * 24 * 60 * 60 * 1000));
@@ -198,10 +195,53 @@ reminderSchema.statics.findDueReminders = async function() {
   
   console.log('📋 Due before end reminders:', dueBeforeEndReminders.length);
   
-  const allDueReminders = [...specificTimeReminders, ...dueBeforeEndReminders];
+  // Filter out reminders with null reservationId from specific time reminders as well
+  const validSpecificTimeReminders = specificTimeReminders.filter(reminder => {
+    if (!reminder.reservationId) {
+      console.warn(`⚠️ Skipping specific time reminder ${reminder._id}: missing reservationId`);
+      return false;
+    }
+    return true;
+  });
+  
+  const allDueReminders = [...validSpecificTimeReminders, ...dueBeforeEndReminders];
   console.log('📋 Total due reminders:', allDueReminders.length);
   
   return allDueReminders;
+};
+
+// Static method to clean up orphaned reminders (reminders with deleted reservations)
+reminderSchema.statics.cleanupOrphanedReminders = async function() {
+  try {
+    console.log('🧹 Cleaning up orphaned reminders...');
+    
+    // Find all reminders and populate reservationId to check for null references
+    const allReminders = await this.find({}).populate('reservationId');
+    
+    const orphanedReminders = allReminders.filter(reminder => !reminder.reservationId);
+    console.log(`📋 Found ${orphanedReminders.length} orphaned reminders`);
+    
+    if (orphanedReminders.length > 0) {
+      // Delete orphaned reminders
+      const deleteResult = await this.deleteMany({
+        _id: { $in: orphanedReminders.map(r => r._id) }
+      });
+      
+      console.log(`🗑️ Deleted ${deleteResult.deletedCount} orphaned reminders`);
+    }
+    
+    return {
+      success: true,
+      orphanedCount: orphanedReminders.length,
+      deletedCount: orphanedReminders.length
+    };
+  } catch (error) {
+    console.error('❌ Error cleaning up orphaned reminders:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 };
 
 // Instance method to mark as sent

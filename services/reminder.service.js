@@ -7,6 +7,12 @@ class ReminderService {
     try {
       console.log('🔔 Processing due reminders...');
       
+      // First, clean up any orphaned reminders
+      const cleanupResult = await Reminder.cleanupOrphanedReminders();
+      if (cleanupResult.success && cleanupResult.orphanedCount > 0) {
+        console.log(`🧹 Cleaned up ${cleanupResult.deletedCount} orphaned reminders`);
+      }
+      
       const dueReminders = await Reminder.findDueReminders();
       console.log(`Found ${dueReminders.length} due reminders`);
       
@@ -14,6 +20,15 @@ class ReminderService {
       
       for (const reminder of dueReminders) {
         try {
+          // Skip reminders with null reservationId
+          if (!reminder.reservationId) {
+            console.error(`❌ Skipping reminder ${reminder._id}: reservationId is null (possibly deleted reservation)`);
+            // Mark as inactive since reservation is missing
+            reminder.isActive = false;
+            await reminder.save();
+            continue;
+          }
+          
           console.log(`🔔 Processing reminder ${reminder._id} for reservation ${reminder.reservationId._id}`);
           
           // Send notification through configured channels
@@ -27,7 +42,7 @@ class ReminderService {
           
           console.log(`✅ Reminder sent for reservation ${reminder.reservationId._id}`);
         } catch (error) {
-          console.error(`❌ Failed to send reminder for reservation ${reminder.reservationId._id}:`, error);
+          console.error(`❌ Failed to send reminder for reservation ${reminder.reservationId?._id || 'unknown'}:`, error);
           
           // Mark as inactive if critical error
           if (error.code === 'CRITICAL') {

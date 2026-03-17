@@ -280,9 +280,18 @@ router.get('/properties',
           filter.targetAudience = targetAudience;
         }
 
-        // Capacity filter (exact capacity)
+        // Capacity filter (exact capacity or special cases)
         if (capacity) {
-          filter.capacity = parseInt(capacity);
+          if (capacity === 'unspecified') {
+            // Filter for properties with no capacity specified
+            filter.capacity = { $exists: false };
+          } else if (capacity === '10+') {
+            // Filter for properties with capacity >= 10
+            filter.capacity = { $gte: 10 };
+          } else {
+            // Exact capacity match
+            filter.capacity = parseInt(capacity);
+          }
         }
 
         // Price range filter

@@ -397,7 +397,6 @@ router.get('/properties',
         filters: hasFilters ? {
           search,
           wilayaId,
-          reservationStatus,
           targetAudience,
           capacity,
           minPrice,

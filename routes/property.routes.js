@@ -565,4 +565,151 @@ router.get('/wilaya/:wilayaId',
   })
 );
 
+// GET /api/properties/search - Advanced property search with availability checking
+router.get('/search',
+  asyncHandler(async (req, res) => {
+    try {
+      const {
+        search,
+        wilayaId,
+        reservationStatus,
+        targetAudience,
+        capacity,
+        minPrice,
+        maxPrice,
+        reserveType,
+        startDate,
+        endDate,
+        page = 1,
+        limit = 20
+      } = req.query;
+
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const skip = (pageNum - 1) * limitNum;
+
+      // Build base filter
+      const filter = { available: true };
+
+      // Search term filter
+      if (search) {
+        filter.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { location: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      // Wilaya filter
+      if (wilayaId) {
+        filter.wilayaId = wilayaId;
+      }
+
+      // Reservation status filter
+      if (reservationStatus && reservationStatus !== 'all') {
+        filter.isReserved = reservationStatus === 'reserved';
+      }
+
+      // Target audience filter
+      if (targetAudience) {
+        filter.targetAudience = targetAudience;
+      }
+
+      // Capacity filter (minimum capacity)
+      if (capacity) {
+        filter.capacity = { $gte: parseInt(capacity) };
+      }
+
+      // Price range filter
+      if (minPrice || maxPrice) {
+        filter.pricePerDay = {};
+        if (minPrice) filter.pricePerDay.$gte = parseInt(minPrice);
+        if (maxPrice) filter.pricePerDay.$lte = parseInt(maxPrice);
+      }
+
+      // Reservation type filter
+      if (reserveType) {
+        filter.reserveTheProperty = reserveType;
+      }
+
+      // Get initial properties matching all filters except date availability
+      let properties = await Property.find(filter)
+        .populate([
+          { path: 'wilayaId', select: 'name code' },
+          { path: 'officeId', select: 'name code' }
+        ])
+        .sort({ createdAt: -1 });
+
+      // Date availability filtering
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        // Validate date range
+        if (start > end) {
+          return sendError(res, 'Start date must be before end date', 400);
+        }
+
+        const Reservation = require('../models/reservation.model');
+        
+        // Filter properties based on date availability
+        properties = await Promise.all(
+          properties.map(async (property) => {
+            if (!property.reservationIds || property.reservationIds.length === 0) {
+              return property; // No reservations, property is available
+            }
+
+            // Check for overlapping reservations
+            const overlappingReservations = await Reservation.find({
+              _id: { $in: property.reservationIds },
+              status: { $in: ['pending', 'confirmed'] },
+              $or: [
+                {
+                  startDate: { $lte: end },
+                  endDate: { $gte: start }
+                }
+              ]
+            });
+
+            // If no overlapping reservations, property is available for these dates
+            return overlappingReservations.length === 0 ? property : null;
+          })
+        );
+
+        // Remove null values (properties that are not available)
+        properties = properties.filter(property => property !== null);
+      }
+
+      // Apply pagination
+      const total = properties.length;
+      const paginatedProperties = properties.slice(skip, skip + limitNum);
+
+      sendSuccess(res, 'Properties retrieved successfully', {
+        properties: paginatedProperties,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum)
+        },
+        filters: {
+          search,
+          wilayaId,
+          reservationStatus,
+          targetAudience,
+          capacity,
+          minPrice,
+          maxPrice,
+          reserveType,
+          startDate,
+          endDate
+        }
+      });
+    } catch (error) {
+      console.error('Property search error:', error);
+      sendError(res, 'Failed to search properties', 500, error.message);
+    }
+  })
+);
+
 module.exports = router;

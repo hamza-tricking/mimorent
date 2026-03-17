@@ -229,27 +229,138 @@ router.post('/orders-reservation', createOrderValidation, asyncHandler(async (re
   }
 }));
 
-// GET /api/properties - Get all available properties (public)
+// GET /api/properties - Get available properties with advanced filtering (public)
 router.get('/properties',
   asyncHandler(async (req, res) => {
     try {
-      console.log('Public properties API called');
+      console.log('Public properties API called with filters:', req.query);
 
-      // Get available properties (available: true, regardless of isReserved)
-      const properties = await Property.find({ available: true })
+      const {
+        search,
+        wilayaId,
+        reservationStatus,
+        targetAudience,
+        capacity,
+        minPrice,
+        maxPrice,
+        reserveType,
+        startDate,
+        endDate,
+        page = 1,
+        limit = 20
+      } = req.query;
+
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const skip = (pageNum - 1) * limitNum;
+
+      // Check if any filters are applied
+      const hasFilters = search || wilayaId || reservationStatus || targetAudience || 
+                        capacity || minPrice || maxPrice || reserveType || startDate || endDate;
+
+      // Build base filter
+      const filter = { available: true };
+
+      if (hasFilters) {
+        // Search term filter
+        if (search) {
+          filter.$or = [
+            { title: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+            { location: { $regex: search, $options: 'i' } }
+          ];
+        }
+
+        // Wilaya filter
+        if (wilayaId) {
+          filter.wilayaId = wilayaId;
+        }
+
+        // Reservation status filter
+        if (reservationStatus && reservationStatus !== 'all') {
+          filter.isReserved = reservationStatus === 'reserved';
+        }
+
+        // Target audience filter
+        if (targetAudience) {
+          filter.targetAudience = targetAudience;
+        }
+
+        // Capacity filter (exact capacity)
+        if (capacity) {
+          filter.capacity = parseInt(capacity);
+        }
+
+        // Price range filter
+        if (minPrice || maxPrice) {
+          filter.pricePerDay = {};
+          if (minPrice) filter.pricePerDay.$gte = parseInt(minPrice);
+          if (maxPrice) filter.pricePerDay.$lte = parseInt(maxPrice);
+        }
+
+        // Reservation type filter
+        if (reserveType) {
+          filter.reserveTheProperty = reserveType;
+        }
+      }
+
+      console.log('Filter applied:', filter);
+
+      // Get initial properties matching all filters except date availability
+      let properties = await Property.find(filter)
         .populate('wilayaId', 'name')
         .populate('officeId', 'name')
         .populate('reservationIds', 'endDate')
         .sort({ createdAt: -1 });
 
-      console.log('Available properties found:', properties.length);
+      console.log('Properties found before date filtering:', properties.length);
+
+      // Date availability filtering (only if dates are provided)
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        // Validate date range
+        if (start > end) {
+          return sendError(res, 'Start date must be before end date', 400);
+        }
+
+        const Reservation = require('../models/reservation.model');
+        
+        // Filter properties based on date availability
+        properties = await Promise.all(
+          properties.map(async (property) => {
+            if (!property.reservationIds || property.reservationIds.length === 0) {
+              return property; // No reservations, property is available
+            }
+
+            // Check for overlapping reservations
+            const overlappingReservations = await Reservation.find({
+              _id: { $in: property.reservationIds },
+              status: { $in: ['pending', 'confirmed'] },
+              $or: [
+                {
+                  startDate: { $lte: end },
+                  endDate: { $gte: start }
+                }
+              ]
+            });
+
+            // If no overlapping reservations, property is available for these dates
+            return overlappingReservations.length === 0 ? property : null;
+          })
+        );
+
+        // Remove null values (properties that are not available)
+        properties = properties.filter(property => property !== null);
+        console.log('Properties found after date filtering:', properties.length);
+      }
 
       // Add availability information to each property
       const propertiesWithReservationInfo = properties.map(property => {
         const propertyObj = property.toObject();
         
         // Use the property's isReserved field directly (more reliable)
-        // Also check for active reservations as backup
         const isCurrentlyReserved = propertyObj.isReserved === true;
         
         // If property is marked as reserved, try to get the earliest reservation end date
@@ -277,8 +388,30 @@ router.get('/properties',
         return propertyObj;
       });
 
+      // Apply pagination
+      const total = propertiesWithReservationInfo.length;
+      const paginatedProperties = propertiesWithReservationInfo.slice(skip, skip + limitNum);
+
       sendSuccess(res, 'Properties retrieved successfully', {
-        properties: propertiesWithReservationInfo
+        properties: paginatedProperties,
+        pagination: hasFilters ? {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum)
+        } : undefined,
+        filters: hasFilters ? {
+          search,
+          wilayaId,
+          reservationStatus,
+          targetAudience,
+          capacity,
+          minPrice,
+          maxPrice,
+          reserveType,
+          startDate,
+          endDate
+        } : undefined
       });
     } catch (error) {
       console.error('Get public properties error:', error);

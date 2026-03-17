@@ -238,7 +238,6 @@ router.get('/properties',
       const {
         search,
         wilayaId,
-        reservationStatus,
         targetAudience,
         capacity,
         minPrice,
@@ -255,7 +254,7 @@ router.get('/properties',
       const skip = (pageNum - 1) * limitNum;
 
       // Check if any filters are applied
-      const hasFilters = search || wilayaId || reservationStatus || targetAudience || 
+      const hasFilters = search || wilayaId || targetAudience || 
                         capacity || minPrice || maxPrice || reserveType || startDate || endDate;
 
       // Build base filter

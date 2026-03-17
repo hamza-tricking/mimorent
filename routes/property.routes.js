@@ -249,7 +249,7 @@ router.get('/',
       const properties = await Property.find(filter)
         .populate([
           { path: 'wilayaId', select: 'name code' },
-          { path: 'officeId', select: 'name code' },
+          { path: 'officeId', select: 'name code phone' },
           { path: 'reservationIds', select: 'customerName customerPhone status startDate endDate totalPrice' }
         ])
         .sort({ createdAt: -1 })
@@ -283,7 +283,7 @@ router.get('/:id',
       const property = await Property.findById(req.params.id)
         .populate([
           { path: 'wilayaId', select: 'name code' },
-          { path: 'officeId', select: 'name code' },
+          { path: 'officeId', select: 'name code phone' },
           { path: 'reservationIds', select: 'customerName customerPhone status startDate endDate totalPrice' }
         ]);
       
@@ -543,8 +543,10 @@ router.get('/wilaya/:wilayaId',
 
       const properties = await Property.find(filter)
         .sort({ title: 1 })
-        .skip(skip)
-        .limit(limit);
+        .populate([
+          { path: 'wilayaId', select: 'name code' },
+          { path: 'officeId', select: 'name code phone' }
+        ]);
 
       const total = await Property.countDocuments(filter);
 
@@ -636,7 +638,7 @@ router.get('/search',
       let properties = await Property.find(filter)
         .populate([
           { path: 'wilayaId', select: 'name code' },
-          { path: 'officeId', select: 'name code' }
+          { path: 'officeId', select: 'name code phone' }
         ])
         .sort({ createdAt: -1 });
 

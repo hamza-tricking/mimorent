@@ -44,6 +44,7 @@ router.get('/properties/wilaya/:wilayaId',
       const properties = await Property.find({ wilayaId })
         .populate('officeId', 'name')
         .populate('wilayaId', 'name')
+        .populate('reservationIds', 'customerName customerPhone startDate endDate totalPrice paidAmount remainingAmount paymentStatus status')
         .sort({ createdAt: -1 });
 
       console.log('Employer properties API - Properties found:', properties.length); // Debug log

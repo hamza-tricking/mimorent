@@ -615,9 +615,9 @@ router.get('/search',
         filter.targetAudience = targetAudience;
       }
 
-      // Capacity filter (minimum capacity)
+      // Capacity filter (exact capacity)
       if (capacity) {
-        filter.capacity = { $gte: parseInt(capacity) };
+        filter.capacity = parseInt(capacity);
       }
 
       // Price range filter

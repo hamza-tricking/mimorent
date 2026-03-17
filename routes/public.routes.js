@@ -255,7 +255,7 @@ router.get('/properties',
 
       // Check if any filters are applied
       const hasFilters = search || wilayaId || targetAudience || 
-                        capacity || minPrice || maxPrice || reserveType || startDate || endDate;
+                        capacity || propertyType || minPrice || maxPrice || reserveType || startDate || endDate;
 
       // Build base filter
       const filter = { available: true };
@@ -294,6 +294,11 @@ router.get('/properties',
           }
         }
 
+        // Property type filter
+        if (propertyType) {
+          filter.propertyType = propertyType;
+        }
+
         // Price range filter
         if (minPrice || maxPrice) {
           filter.pricePerDay = {};
@@ -328,6 +333,28 @@ router.get('/properties',
           return sendError(res, 'Start date must be before end date', 400);
         }
 
+        // For monthly reservations, validate the same way as reservation form
+        if (reserveType === 'monthly') {
+          // Calculate the difference in months
+          const monthsDiff = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+          const dayDiff = end.getDate() - start.getDate();
+          
+          // Check if it's exactly at least one month
+          if (monthsDiff < 1) {
+            return sendError(res, 'فترة الحجز غير صحيحة. يجب أن يكون تاريخ الانتهاء بعد شهر واحد على الأقل من تاريخ البدء للحجوزات الشهرية.', 400);
+          }
+          
+          // For exactly one month, day should be the same
+          if (monthsDiff === 1 && dayDiff !== 0) {
+            return sendError(res, 'فترة الحجز غير صحيحة. للحجز الشهري، يجب أن يكون تاريخ الانتهاء هو نفس اليوم من الشهر التالي (مثال: 03/15/2026 → 04/15/2026).', 400);
+          }
+          
+          // For multiple months, day should be the same
+          if (monthsDiff > 1 && dayDiff !== 0) {
+            return sendError(res, 'فترة الحجز غير صحيحة. للحجز الشهري، يجب أن يكون تاريخ الانتهاء هو نفس اليوم من الشهر المناسب (مثال: 03/15/2026 → 06/15/2026 لمدة 3 أشهر).', 400);
+          }
+        }
+
         const Reservation = require('../models/reservation.model');
         
         // Filter properties based on date availability
@@ -337,7 +364,7 @@ router.get('/properties',
               return property; // No reservations, property is available
             }
 
-            // Check for overlapping reservations
+            // Check for overlapping reservations - same logic for both daily and monthly
             const overlappingReservations = await Reservation.find({
               _id: { $in: property.reservationIds },
               status: { $in: ['pending', 'confirmed'] },

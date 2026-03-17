@@ -375,7 +375,7 @@ router.post('/reservations',
 
       await reservation.save();
 
-      // Create notification and history for new reservation
+      // Create notification for new reservation
       try {
         // Fetch user data to get proper name
         const userData = await User.findById(req.user._id);
@@ -409,36 +409,8 @@ router.post('/reservations',
           }
         });
         console.log('🔔 Notification created for employer reservation:', reservation._id);
-
-        // Create history record
-        const History = require('../models/history.model');
-        await History.create({
-          action: 'reservation_created',
-          entityType: 'reservation',
-          entityId: reservation._id,
-          userId: req.user._id,
-          description: `تم إنشاء حجز جديد للعميل ${customerName} للعقار ${property.title}`,
-          metadata: {
-            customerName: customerName,
-            propertyTitle: property.title,
-            customerPhone: customerPhone,
-            startDate: new Date(startDate),
-            endDate: new Date(endDate),
-            totalPrice: totalPrice,
-            paidAmount: paidAmount,
-            remainingAmount: remainingAmount,
-            paymentStatus: paymentStatus || 'pending',
-            status: 'pending',
-            employerId: employerId,
-            createdById: req.user._id,
-            createdByName: creatorName,
-            createdAt: new Date()
-          },
-          ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
-        });
-        console.log('📝 History record created for employer reservation:', reservation._id);
       } catch (notificationError) {
-        console.error('Failed to create notification/history:', notificationError);
+        console.error('Failed to create notification:', notificationError);
         // Continue with reservation creation even if notification fails
       }
 
@@ -447,7 +419,8 @@ router.post('/reservations',
         propertyId,
         { 
           isReserved: true,
-          reservationId: reservation._id
+          reservationId: reservation._id,
+          $push: { reservationIds: reservation._id } // Add to reservationIds array
         },
         { new: true }
       );

@@ -121,6 +121,8 @@ console.log('Notification routes registered');
 app.use('/api/employer', require('./routes/employer.routes'));
 app.use('/api/employer/notifications', require('./routes/employer.notification.routes'));
 app.use('/api', require('./routes/public.routes'));
+app.use('/api/properties', require('./routes/property.routes'));
+console.log('Property routes registered');
 
 // Start reminder job
 require('./jobs/reminder.job');

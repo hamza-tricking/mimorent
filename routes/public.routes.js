@@ -318,7 +318,7 @@ router.get('/properties',
       // Get initial properties matching all filters except date availability
       let properties = await Property.find(filter)
         .populate('wilayaId', 'name')
-        .populate('officeId', 'name')
+        .populate('officeId', 'name phone')
         .populate('reservationIds', 'endDate')
         .sort({ createdAt: -1 });
 
@@ -489,7 +489,7 @@ router.get('/properties/:id',
 
       const property = await Property.findById(id)
         .populate('wilayaId', 'name')
-        .populate('officeId', 'name');
+        .populate('officeId', 'name phone');
 
       if (!property) {
         return sendError(res, 'Property not found', 404);

@@ -19,15 +19,19 @@ router.get('/', auth, async (req, res) => {
     console.log('Fetching notifications for user:', userId);
     console.log('Full user object:', JSON.stringify(req.user, null, 2));
 
-    // Check if user is admin - if so, show all notifications
+    // Check if user is admin or sousadmin - if so, show all notifications
     const isAdmin = req.user.role === 'admin' || req.user.isAdmin === true;
+    const isSousAdmin = req.user.role === 'sousAdmin';
+    const canSeeAllNotifications = isAdmin || isSousAdmin;
     console.log('Is admin user:', isAdmin);
+    console.log('Is sousadmin user:', isSousAdmin);
+    console.log('Can see all notifications:', canSeeAllNotifications);
 
     let notifications;
     let total;
 
-    if (isAdmin) {
-      // Admin can see all notifications
+    if (canSeeAllNotifications) {
+      // Admin and sousadmin can see all notifications
       notifications = await Notification.find({})
         .populate('reservationId', 'customerName customerPhone')
         .populate('propertyId', 'title')

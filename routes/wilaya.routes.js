@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/auth.middleware');
-const { adminOnly } = require('../middlewares/role.middleware');
+const { adminOnly, adminOrSousAdmin } = require('../middlewares/role.middleware');
 const { sendSuccess, sendError } = require('../utils/response.util');
 const { asyncHandler } = require('../middlewares/error.middleware');
 const Wilaya = require('../models/wilaya.model');
@@ -79,7 +79,7 @@ router.post('/',
 // GET /api/admin/wilayas - Get all wilayas
 router.get('/',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
@@ -120,7 +120,7 @@ router.get('/',
 // GET /api/admin/wilayas/:id - Get single wilaya by ID
 router.get('/:id',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const wilaya = await Wilaya.findById(req.params.id);

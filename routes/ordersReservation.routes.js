@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/auth.middleware');
-const { adminOnly, employerOnly } = require('../middlewares/role.middleware');
+const { adminOnly, employerOnly, adminOrSousAdmin } = require('../middlewares/role.middleware');
 const { sendSuccess, sendError } = require('../utils/response.util');
 const { asyncHandler } = require('../middlewares/error.middleware');
 const OrdersReservation = require('../models/ordersReservation.model');
@@ -81,7 +81,7 @@ const orderActionValidation = [
 ];
 
 // GET /api/admin/orders-reservation - Get all orders
-router.get('/', auth, adminOnly, asyncHandler(async (req, res) => {
+router.get('/', auth, adminOrSousAdmin, asyncHandler(async (req, res) => {
   try {
     const { page = 1, limit = 50, status, orderType, wilayaId, priority } = req.query;
     
@@ -220,7 +220,7 @@ router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/admin/orders-reservation/:id - Get single order by ID
-router.get('/:id', auth, adminOnly, asyncHandler(async (req, res) => {
+router.get('/:id', auth, adminOrSousAdmin, asyncHandler(async (req, res) => {
   try {
     const order = await OrdersReservation.findById(req.params.id)
       .populate('propertyId', 'title location pricePerDay images isReserved')

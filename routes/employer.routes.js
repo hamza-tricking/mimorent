@@ -627,4 +627,140 @@ router.put('/reservations/:id',
   })
 );
 
+// POST /api/employer/reservations/:id/make-available - Make reservation available (cancel and remove from property)
+router.post('/reservations/:id/make-available',
+  auth,
+  employerOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const reservationId = req.params.id;
+
+      // Check if reservation exists
+      const reservation = await Reservation.findById(reservationId);
+      if (!reservation) {
+        return sendError(res, 'Reservation not found', 404);
+      }
+
+      // Check if reservation belongs to the employer
+      if (reservation.employerId && reservation.employerId.toString() !== req.user._id.toString()) {
+        return sendError(res, 'You can only make your own reservations available', 403);
+      }
+
+      // Check if reservation is already cancelled or completed
+      if (reservation.status === 'cancelled') {
+        return sendError(res, 'Reservation is already cancelled', 400);
+      }
+
+      if (reservation.status === 'completed') {
+        return sendError(res, 'Cannot make completed reservation available', 400);
+      }
+
+      // Update reservation status to cancelled
+      reservation.status = 'cancelled';
+      await reservation.save();
+
+      // Remove reservation from property's reservationIds array
+      await Property.findByIdAndUpdate(
+        reservation.propertyId,
+        { $pull: { reservationIds: reservationId } }
+      );
+
+      // Update property reservation status
+      const property = await Property.findById(reservation.propertyId);
+      if (property) {
+        await property.updateReservationStatus();
+      }
+
+      // Create history record
+      try {
+        await History.createReservationHistory({
+          action: 'reservation_made_available',
+          reservationId: reservationId,
+          userId: req.user._id,
+          description: `Reservation made available for ${reservation.customerName}`,
+          metadata: {
+            reservationId: reservationId,
+            propertyId: reservation.propertyId,
+            customerName: reservation.customerName,
+            previousStatus: reservation.status,
+            newStatus: 'cancelled',
+            startDate: reservation.startDate,
+            endDate: reservation.endDate,
+            totalPrice: reservation.totalPrice,
+            paidAmount: reservation.paidAmount,
+            remainingAmount: reservation.remainingAmount,
+            paymentStatus: reservation.paymentStatus,
+            customerPhone: reservation.customerPhone,
+            isMarried: reservation.isMarried,
+            numberOfPeople: reservation.numberOfPeople,
+            identityImages: reservation.identityImages,
+            notes: reservation.notes,
+            employerId: reservation.employerId
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (historyError) {
+        console.error('Failed to create history entry:', historyError);
+        // Don't fail the request if history logging fails
+      }
+
+      // Create notification for making reservation available
+      try {
+        const property = await Property.findById(reservation.propertyId);
+        
+        // Fetch user data to get proper name
+        const userData = await User.findById(req.user._id);
+        const creatorName = userData?.firstName && userData?.lastName 
+          ? `${userData.firstName} ${userData.lastName}` 
+          : userData?.username || userData?.name || 'System';
+        
+        const notificationData = {
+          type: 'reservation',
+          title: 'تم جعل الحجز متاح',
+          message: `تم جعل حجز العميل ${reservation.customerName} للعقار ${property?.title || 'Unknown'} متاحًا`,
+          reservationId: reservation._id,
+          propertyId: reservation.propertyId,
+          userId: req.user._id,
+          metadata: {
+            customerName: reservation.customerName,
+            propertyTitle: property?.title || 'Unknown',
+            customerPhone: reservation.customerPhone,
+            startDate: reservation.startDate,
+            endDate: reservation.endDate,
+            totalPrice: reservation.totalPrice,
+            paymentStatus: reservation.paymentStatus,
+            status: 'cancelled',
+            previousStatus: reservation.status,
+            employerId: reservation.employerId,
+            createdById: req.user._id,
+            createdByName: creatorName,
+            createdAt: new Date(),
+            action: 'made_available'
+          }
+        };
+        
+        console.log('🔍 Employer make available notification data being saved:', JSON.stringify(notificationData, null, 2));
+        
+        const savedNotification = await Notification.create(notificationData);
+        console.log('🔍 Saved employer make available notification from database:', JSON.stringify(savedNotification, null, 2));
+        console.log('🔔 Employer make available notification created for reservation:', reservation._id);
+      } catch (notificationError) {
+        console.error('Failed to create employer make available notification:', notificationError);
+        // Continue with the response even if notification fails
+      }
+
+      return sendSuccess(res, 'Reservation made available successfully and removed from property', {
+        reservationId: reservationId,
+        status: 'cancelled',
+        propertyUpdated: true
+      });
+
+    } catch (error) {
+      console.error('Error making reservation available:', error);
+      return sendError(res, 'Failed to make reservation available', 500);
+    }
+  })
+);
+
 module.exports = router;

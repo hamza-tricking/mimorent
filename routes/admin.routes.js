@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const auth = require('../middlewares/auth.middleware');
-const { adminOnly } = require('../middlewares/role.middleware');
+const { adminOnly, adminOrSousAdmin } = require('../middlewares/role.middleware');
 const { sendSuccess, sendError } = require('../utils/response.util');
 const { asyncHandler } = require('../middlewares/error.middleware');
 const User = require('../models/user.model');
@@ -46,7 +46,7 @@ const createUserValidation = [
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
   body('role')
     .notEmpty().withMessage('Role is required')
-    .isIn(['admin', 'employer']).withMessage('Role must be either admin or employer'),
+    .isIn(['admin', 'employer', 'sousAdmin']).withMessage('Role must be either admin, employer, or sousAdmin'),
   body('officeId')
     .optional()
     .isMongoId().withMessage('Invalid Office ID')
@@ -67,7 +67,7 @@ const updateUserValidation = [
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
   body('role')
     .optional()
-    .isIn(['admin', 'employer']).withMessage('Role must be either admin or employer'),
+    .isIn(['admin', 'employer', 'sousAdmin']).withMessage('Role must be either admin, employer, or sousAdmin'),
   body('officeId')
     .optional()
     .isMongoId().withMessage('Invalid Office ID')
@@ -76,7 +76,7 @@ const updateUserValidation = [
 // GET /api/admin/users - Get all users with pagination and filtering
 router.get('/users',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
@@ -129,7 +129,7 @@ router.get('/users',
 // GET /api/admin/users/:id - Get single user by ID
 router.get('/users/:id',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const user = await User.findById(req.params.id).select('-password').populate('officeId', 'name');
@@ -309,7 +309,7 @@ router.delete('/users/:id',
 // GET /api/admin/properties - Get all properties with pagination and filtering
 router.get('/properties',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
@@ -369,7 +369,7 @@ router.get('/properties',
 // GET /api/admin/properties/:id - Get single property by ID
 router.get('/properties/:id',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const property = await Property.findById(req.params.id);
@@ -596,7 +596,7 @@ router.delete('/properties/:id',
 // GET /api/admin/offices - Get all offices with pagination and filtering
 router.get('/offices',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
@@ -647,7 +647,7 @@ router.get('/offices',
 // GET /api/admin/offices/:id - Get single office by ID
 router.get('/offices/:id',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const office = await Office.findById(req.params.id)
@@ -775,7 +775,7 @@ router.delete('/offices/:id',
 
 router.get('/stats',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     const User = require('../models/user.model');
     const Property = require('../models/property.model');
@@ -825,7 +825,7 @@ router.get('/stats',
 // GET /api/admin/history - Get history with pagination and filtering
 router.get('/history',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
@@ -890,7 +890,7 @@ router.get('/history',
 // GET /api/admin/history/reservations - Get reservation-specific history
 router.get('/history/reservations',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const page = parseInt(req.query.page) || 1;
@@ -956,7 +956,7 @@ router.get('/history',
 // GET /api/admin/settings - Get admin settings
 router.get('/settings',
   auth,
-  adminOnly,
+  adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
       const settings = await AdminSettings.getSettings();

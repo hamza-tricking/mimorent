@@ -20,6 +20,8 @@ const authorize = (...roles) => {
 
 const adminOnly = authorize('admin');
 const employerOnly = authorize('employer');
+const sousAdminOnly = authorize('sousAdmin');
+const adminOrSousAdmin = authorize('admin', 'sousAdmin');
 const employeeOrAdmin = authorize('employee', 'admin');
 const customerOrEmployeeOrAdmin = authorize('customer', 'employee', 'admin');
 
@@ -27,6 +29,8 @@ module.exports = {
   authorize,
   adminOnly,
   employerOnly,
+  sousAdminOnly,
+  adminOrSousAdmin,
   employeeOrAdmin,
   customerOrEmployeeOrAdmin
 };

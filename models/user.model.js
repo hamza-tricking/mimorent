@@ -46,8 +46,8 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: {
-      values: ['admin', 'employer'],
-      message: 'Role must be either admin or employer'
+      values: ['admin', 'employer', 'sousAdmin'],
+      message: 'Role must be either admin, employer, or sousAdmin'
     },
     required: [true, 'Role is required']
   },
@@ -128,6 +128,11 @@ userSchema.methods.isAdmin = function() {
 // Instance method to check if user is employer
 userSchema.methods.isEmployer = function() {
   return this.role === 'employer';
+};
+
+// Instance method to check if user is sousAdmin
+userSchema.methods.isSousAdmin = function() {
+  return this.role === 'sousAdmin';
 };
 
 // Virtual field for full name

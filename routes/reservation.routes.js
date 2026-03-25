@@ -839,4 +839,85 @@ router.put('/:id/complete',
   })
 );
 
+// POST /api/admin/reservations/:id/make-available - Make reservation available (cancel and remove from property)
+router.post('/:id/make-available',
+  auth,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    try {
+      const reservationId = req.params.id;
+
+      // Check if reservation exists
+      const reservation = await Reservation.findById(reservationId);
+      if (!reservation) {
+        return sendError(res, 'Reservation not found', 404);
+      }
+
+      // Check if reservation is already cancelled or completed
+      if (reservation.status === 'cancelled') {
+        return sendError(res, 'Reservation is already cancelled', 400);
+      }
+
+      if (reservation.status === 'completed') {
+        return sendError(res, 'Cannot make completed reservation available', 400);
+      }
+
+      // Update reservation status to cancelled
+      reservation.status = 'cancelled';
+      await reservation.save();
+
+      // Remove reservation from property's reservationIds array
+      await Property.findByIdAndUpdate(
+        reservation.propertyId,
+        { $pull: { reservationIds: reservationId } }
+      );
+
+      // Update property reservation status
+      const property = await Property.findById(reservation.propertyId);
+      if (property) {
+        await property.updateReservationStatus();
+      }
+
+      // Create history record
+      await History.create({
+        action: 'reservation_made_available',
+        entityType: 'reservation',
+        entityId: reservationId,
+        userId: req.user.id,
+        description: `Reservation made available for ${reservation.customerName}`,
+        metadata: {
+          reservationId: reservationId,
+          propertyId: reservation.propertyId,
+          customerName: reservation.customerName,
+          previousStatus: reservation.status,
+          newStatus: 'cancelled',
+          startDate: reservation.startDate,
+          endDate: reservation.endDate,
+          totalPrice: reservation.totalPrice,
+          paidAmount: reservation.paidAmount,
+          remainingAmount: reservation.remainingAmount,
+          paymentStatus: reservation.paymentStatus,
+          customerPhone: reservation.customerPhone,
+          isMarried: reservation.isMarried,
+          numberOfPeople: reservation.numberOfPeople,
+          identityImages: reservation.identityImages,
+          notes: reservation.notes
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
+      return sendSuccess(res, 'Reservation made available successfully and removed from property', {
+        reservationId: reservationId,
+        status: 'cancelled',
+        propertyUpdated: true
+      });
+
+    } catch (error) {
+      console.error('Error making reservation available:', error);
+      return sendError(res, 'Failed to make reservation available', 500);
+    }
+  })
+);
+
 module.exports = router;

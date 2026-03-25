@@ -911,6 +911,51 @@ router.post('/:id/make-available',
         // Don't fail the request if history logging fails
       }
 
+      // Create notification for making reservation available
+      try {
+        const property = await Property.findById(reservation.propertyId);
+        
+        // Fetch user data to get proper name
+        const userData = await User.findById(req.user._id);
+        const creatorName = userData?.firstName && userData?.lastName 
+          ? `${userData.firstName} ${userData.lastName}` 
+          : userData?.username || userData?.name || 'System';
+        
+        const notificationData = {
+          type: 'reservation',
+          title: 'تم جعل الحجز متاح',
+          message: `تم جعل حجز العميل ${reservation.customerName} للعقار ${property?.title || 'Unknown'} متاحًا`,
+          reservationId: reservation._id,
+          propertyId: reservation.propertyId,
+          userId: req.user._id,
+          metadata: {
+            customerName: reservation.customerName,
+            propertyTitle: property?.title || 'Unknown',
+            customerPhone: reservation.customerPhone,
+            startDate: reservation.startDate,
+            endDate: reservation.endDate,
+            totalPrice: reservation.totalPrice,
+            paymentStatus: reservation.paymentStatus,
+            status: 'cancelled',
+            previousStatus: reservation.status,
+            employerId: reservation.employerId,
+            createdById: req.user._id,
+            createdByName: creatorName,
+            createdAt: new Date(),
+            action: 'made_available'
+          }
+        };
+        
+        console.log('🔍 Make available notification data being saved:', JSON.stringify(notificationData, null, 2));
+        
+        const savedNotification = await Notification.create(notificationData);
+        console.log('🔍 Saved make available notification from database:', JSON.stringify(savedNotification, null, 2));
+        console.log('🔔 Make available notification created for reservation:', reservation._id);
+      } catch (notificationError) {
+        console.error('Failed to create make available notification:', notificationError);
+        // Continue with the response even if notification fails
+      }
+
       return sendSuccess(res, 'Reservation made available successfully and removed from property', {
         reservationId: reservationId,
         status: 'cancelled',

@@ -4,7 +4,7 @@ const historySchema = new mongoose.Schema({
   action: {
     type: String,
     required: [true, 'Action type is required'],
-    enum: ['reservation_created', 'reservation_updated', 'reservation_cancelled', 'reservation_completed', 'property_updated'],
+    enum: ['reservation_created', 'reservation_updated', 'reservation_cancelled', 'reservation_completed', 'reservation_made_available', 'property_updated'],
     trim: true
   },
   entityType: {

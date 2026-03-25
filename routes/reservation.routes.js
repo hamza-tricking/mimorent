@@ -879,33 +879,37 @@ router.post('/:id/make-available',
       }
 
       // Create history record
-      await History.create({
-        action: 'reservation_made_available',
-        entityType: 'reservation',
-        entityId: reservationId,
-        userId: req.user.id,
-        description: `Reservation made available for ${reservation.customerName}`,
-        metadata: {
+      try {
+        await History.createReservationHistory({
+          action: 'reservation_made_available',
           reservationId: reservationId,
-          propertyId: reservation.propertyId,
-          customerName: reservation.customerName,
-          previousStatus: reservation.status,
-          newStatus: 'cancelled',
-          startDate: reservation.startDate,
-          endDate: reservation.endDate,
-          totalPrice: reservation.totalPrice,
-          paidAmount: reservation.paidAmount,
-          remainingAmount: reservation.remainingAmount,
-          paymentStatus: reservation.paymentStatus,
-          customerPhone: reservation.customerPhone,
-          isMarried: reservation.isMarried,
-          numberOfPeople: reservation.numberOfPeople,
-          identityImages: reservation.identityImages,
-          notes: reservation.notes
-        },
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
-      });
+          userId: req.user.id,
+          description: `Reservation made available for ${reservation.customerName}`,
+          metadata: {
+            reservationId: reservationId,
+            propertyId: reservation.propertyId,
+            customerName: reservation.customerName,
+            previousStatus: reservation.status,
+            newStatus: 'cancelled',
+            startDate: reservation.startDate,
+            endDate: reservation.endDate,
+            totalPrice: reservation.totalPrice,
+            paidAmount: reservation.paidAmount,
+            remainingAmount: reservation.remainingAmount,
+            paymentStatus: reservation.paymentStatus,
+            customerPhone: reservation.customerPhone,
+            isMarried: reservation.isMarried,
+            numberOfPeople: reservation.numberOfPeople,
+            identityImages: reservation.identityImages,
+            notes: reservation.notes
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (historyError) {
+        console.error('Failed to create history entry:', historyError);
+        // Don't fail the request if history logging fails
+      }
 
       return sendSuccess(res, 'Reservation made available successfully and removed from property', {
         reservationId: reservationId,

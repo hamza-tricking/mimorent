@@ -229,9 +229,21 @@ router.put('/users/:id',
       const updates = req.body;
 
       // Remove sensitive fields that shouldn't be updated directly
-      delete updates.password;
       delete updates._id;
 
+      // Handle password update separately if provided
+      let passwordUpdate = null;
+      if (updates.password) {
+        // Validate password strength
+        if (updates.password.length < 6) {
+          return sendError(res, 'Password must be at least 6 characters long', 400);
+        }
+        
+        passwordUpdate = updates.password;
+        delete updates.password; // Remove from regular updates
+      }
+
+      // Update user fields
       const user = await User.findByIdAndUpdate(
         userId,
         updates,
@@ -240,6 +252,13 @@ router.put('/users/:id',
 
       if (!user) {
         return sendError(res, 'User not found', 404);
+      }
+
+      // Update password if provided
+      if (passwordUpdate) {
+        const userForPassword = await User.findById(userId);
+        userForPassword.password = passwordUpdate;
+        await userForPassword.save();
       }
 
       sendSuccess(res, 'User updated successfully', { user });

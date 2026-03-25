@@ -18,7 +18,28 @@ const authorize = (...roles) => {
   };
 };
 
-const adminOnly = authorize('admin');
+const adminOnly = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Access denied. User not authenticated.'
+    });
+  }
+
+  // Allow admin for all requests, sousAdmin for GET requests only
+  if (req.user.role === 'admin') {
+    return next();
+  }
+  
+  if (req.user.role === 'sousAdmin' && req.method === 'GET') {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message: 'Access denied. Insufficient permissions.'
+  });
+};
 const employerOnly = authorize('employer');
 const sousAdminOnly = authorize('sousAdmin');
 const adminOrSousAdmin = authorize('admin', 'sousAdmin');

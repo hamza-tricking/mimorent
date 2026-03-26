@@ -16,9 +16,9 @@ router.get('/financial-stats',
   adminOnly,
   asyncHandler(async (req, res) => {
     try {
-      const { wilayaId, officeId, employerId } = req.query;
+      const { wilayaId, officeId, employerId, startDate, endDate } = req.query;
       
-      console.log('🔍 Request params:', { wilayaId, officeId, employerId });
+      console.log('🔍 Request params:', { wilayaId, officeId, employerId, startDate, endDate });
       
       // First, let's check if we have any reservations at all
       const totalReservations = await Reservation.countDocuments();
@@ -47,10 +47,25 @@ router.get('/financial-stats',
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
       
+      // Parse custom date range if provided
+      let customStartDate = null;
+      let customEndDate = null;
+      
+      if (startDate && endDate) {
+        customStartDate = new Date(startDate);
+        customEndDate = new Date(endDate);
+        // Add one day to end date to make it inclusive
+        customEndDate.setDate(customEndDate.getDate() + 1);
+        console.log('🟢 Using custom date range:', customStartDate, 'to', customEndDate);
+      }
+      
       console.log('🟢 Date ranges:');
       console.log('  Today:', today, 'to', tomorrow);
       console.log('  Week:', weekStart, 'to', weekEnd);
       console.log('  Month:', monthStart, 'to', monthEnd);
+      if (customStartDate) {
+        console.log('  Custom:', customStartDate, 'to', customEndDate);
+      }
       
       // Helper function to get stats for a date range
       const getStatsForDateRange = async (startDate, endDate, rangeName) => {
@@ -193,16 +208,36 @@ router.get('/financial-stats',
         return result;
       };
       
-      // Get stats for different periods - always calculate all periods
-      const dailyStats = await getStatsForDateRange(today, tomorrow, 'Daily');
-      const weeklyStats = await getStatsForDateRange(weekStart, weekEnd, 'Weekly');
-      const monthlyStats = await getStatsForDateRange(monthStart, monthEnd, 'Monthly');
+      // Get stats for different periods
+      let dailyStats, weeklyStats, monthlyStats, allTimeStats;
       
-      // Get all time stats (no date filter)
-      const allTimeStats = await getStatsForDateRange(new Date(0), new Date(), 'All Time');
+      if (customStartDate && customEndDate) {
+        // Use custom date range for all stats
+        const customStats = await getStatsForDateRange(customStartDate, customEndDate, 'Custom Range');
+        dailyStats = customStats;
+        weeklyStats = customStats;
+        monthlyStats = customStats;
+        allTimeStats = customStats;
+      } else {
+        // Get stats for predefined periods
+        dailyStats = await getStatsForDateRange(today, tomorrow, 'Daily');
+        weeklyStats = await getStatsForDateRange(weekStart, weekEnd, 'Weekly');
+        monthlyStats = await getStatsForDateRange(monthStart, monthEnd, 'Monthly');
+        allTimeStats = await getStatsForDateRange(new Date(0), new Date(), 'All Time');
+      }
       
       // Get stats by wilaya (comprehensive)
+      const wilayaMatchQuery = {};
+      if (customStartDate && customEndDate) {
+        wilayaMatchQuery.createdAt = {
+          $gte: customStartDate,
+          $lt: customEndDate
+        };
+      }
+      
       const wilayaStats = await Reservation.aggregate([
+        // Apply date filter if custom range is provided
+        ...(customStartDate && customEndDate ? [{ $match: wilayaMatchQuery }] : []),
         // Apply filters at the beginning
         ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
         {
@@ -267,7 +302,17 @@ router.get('/financial-stats',
       ]);
       
       // Get stats by office (comprehensive)
+      const officeMatchQuery = {};
+      if (customStartDate && customEndDate) {
+        officeMatchQuery.createdAt = {
+          $gte: customStartDate,
+          $lt: customEndDate
+        };
+      }
+      
       const officeStats = await Reservation.aggregate([
+        // Apply date filter if custom range is provided
+        ...(customStartDate && customEndDate ? [{ $match: officeMatchQuery }] : []),
         // Apply filters at the beginning
         ...(employerId ? [{ $match: { employerId: new mongoose.Types.ObjectId(employerId) } }] : []),
         {
@@ -332,7 +377,17 @@ router.get('/financial-stats',
       ]);
       
       // Get stats by employer (comprehensive)
+      const employerMatchQuery = {};
+      if (customStartDate && customEndDate) {
+        employerMatchQuery.createdAt = {
+          $gte: customStartDate,
+          $lt: customEndDate
+        };
+      }
+      
       const employerStats = await Reservation.aggregate([
+        // Apply date filter if custom range is provided
+        ...(customStartDate && customEndDate ? [{ $match: employerMatchQuery }] : []),
         {
           $lookup: {
             from: 'properties',

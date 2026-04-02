@@ -19,7 +19,7 @@ connectDB();
 app.use(helmet());
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://dmtart.pro/mimorent/', 'https://mimorent.vercel.app', 'https://mimorent-5xzh81cri-hamza-trickings-projects.vercel.app'],
+  origin: ['http://localhost:3000', 'https://dmtart.pro/mimorent/', 'https://mimorent.vercel.app', 'https://mimorent-5xzh81cri-hamza-trickings-projects.vercel.app', 'https://www.mimorent.com/'],
   credentials: true
 }));
 

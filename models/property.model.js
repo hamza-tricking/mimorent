@@ -55,7 +55,9 @@ const propertySchema = new mongoose.Schema({
           'i.ibb.co',
           'images.unsplash.com',
           'cdn.pixabay.com',
-          'images.pexels.com'
+          'images.pexels.com',
+          'drive.google.com',
+          'lh3.googleusercontent.com'
         ];
         
         try {

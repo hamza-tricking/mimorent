@@ -325,15 +325,12 @@ router.delete('/users/:id',
   })
 );
 
-// GET /api/admin/properties - Get all properties with pagination and filtering
+// GET /api/admin/properties - Get all properties with filtering (no pagination)
 router.get('/properties',
   auth,
   adminOrSousAdmin,
   asyncHandler(async (req, res) => {
     try {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
-      const skip = (page - 1) * limit;
       const search = req.query.search || '';
       const type = req.query.type || '';
       const status = req.query.status || '';
@@ -364,20 +361,10 @@ router.get('/properties',
             select: 'customerName customerPhone status startDate endDate totalPrice paidAmount remainingAmount paymentStatus employerId'
           }
         ])
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit);
-
-      const total = await Property.countDocuments(filter);
+        .sort({ createdAt: -1 });
 
       sendSuccess(res, 'Properties retrieved successfully', {
-        properties,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit)
-        }
+        properties
       });
     } catch (error) {
       sendError(res, 'Failed to retrieve properties', error);

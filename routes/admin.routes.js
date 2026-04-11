@@ -22,6 +22,7 @@ const propertyRoutes = require('./property.routes');
 const reservationRoutes = require('./reservation.routes');
 const ordersReservationRoutes = require('./ordersReservation.routes');
 const notificationRoutes = require('./notification.routes');
+const backupRoutes = require('./backup.routes');
 
 // Mount route modules
 router.use('/wilayas', wilayaRoutes);
@@ -30,6 +31,7 @@ router.use('/properties', propertyRoutes);
 router.use('/reservations', reservationRoutes);
 router.use('/orders-reservation', ordersReservationRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/', backupRoutes);
 
 // Validation rules for user creation
 const createUserValidation = [

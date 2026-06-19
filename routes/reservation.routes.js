@@ -404,7 +404,7 @@ router.get('/',
 
       const reservations = await Reservation.find(filter)
         .populate([
-          { path: 'propertyId', select: 'title description pricePerDay wilayaId officeId' },
+          { path: 'propertyId', select: 'title description pricePerDay pricePerMonth wilayaId officeId' },
           { path: 'employerId', select: 'username firstName lastName' }
         ])
         .sort({ createdAt: -1 })
@@ -438,7 +438,7 @@ router.get('/:id',
   asyncHandler(async (req, res) => {
     try {
       const reservation = await Reservation.findById(req.params.id)
-        .populate('propertyId', 'title description pricePerDay wilayaId');
+        .populate('propertyId', 'title description pricePerDay pricePerMonth wilayaId');
 
       if (!reservation) {
         return sendError(res, 'Reservation not found', 404);
@@ -724,7 +724,7 @@ router.get('/property/:propertyId',
       const skip = (page - 1) * limit;
 
       const reservations = await Reservation.find({ propertyId })
-        .populate('propertyId', 'title description pricePerDay wilayaId')
+        .populate('propertyId', 'title description pricePerDay pricePerMonth wilayaId')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -758,7 +758,7 @@ router.get('/employer/:employerId',
       const skip = (page - 1) * limit;
 
       const reservations = await Reservation.find({ employerId })
-        .populate('propertyId', 'title description pricePerDay wilayaId')
+        .populate('propertyId', 'title description pricePerDay pricePerMonth wilayaId')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);

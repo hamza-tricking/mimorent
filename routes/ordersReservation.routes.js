@@ -94,7 +94,7 @@ router.get('/', auth, adminOnly, asyncHandler(async (req, res) => {
 
     // Execute query with pagination and populate property with isReserved field
     const orders = await OrdersReservation.find(filter)
-      .populate('propertyId', 'title location pricePerDay images isReserved')
+      .populate('propertyId', 'title location pricePerDay pricePerMonth images isReserved')
       .populate('wilayaId', 'name')
       .populate('employerNotes.employerId', 'firstName lastName username')
       .sort({ createdAt: -1 })
@@ -163,7 +163,7 @@ router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
     // Execute query with pagination and populate property with isReserved field
     // Use lean() to avoid Mongoose validation on existing documents
     const orders = await OrdersReservation.find(filter)
-      .populate('propertyId', 'title location pricePerDay images isReserved')
+      .populate('propertyId', 'title location pricePerDay pricePerMonth images isReserved')
       .populate('wilayaId', 'name')
       .populate('employerNotes.employerId', 'firstName lastName username')
       .sort({ createdAt: -1 })
@@ -223,7 +223,7 @@ router.get('/employer', auth, employerOnly, asyncHandler(async (req, res) => {
 router.get('/:id', auth, adminOnly, asyncHandler(async (req, res) => {
   try {
     const order = await OrdersReservation.findById(req.params.id)
-      .populate('propertyId', 'title location pricePerDay images isReserved')
+      .populate('propertyId', 'title location pricePerDay pricePerMonth images isReserved')
       .populate('wilayaId', 'name');
 
     if (!order) {
@@ -350,7 +350,7 @@ router.post('/', auth, adminOnly, createOrderValidation, asyncHandler(async (req
     }
 
     // Populate references for response
-    await order.populate('propertyId', 'title location pricePerDay images');
+    await order.populate('propertyId', 'title location pricePerDay pricePerMonth images');
     await order.populate('wilayaId', 'name');
 
     sendSuccess(res, 'Order created successfully', { order }, 201);
@@ -385,7 +385,7 @@ router.put('/:id/approve', auth, adminOnly, orderActionValidation, asyncHandler(
     await order.save();
 
     // Populate references for response
-    await order.populate('propertyId', 'title location pricePerDay images');
+    await order.populate('propertyId', 'title location pricePerDay pricePerMonth images');
     await order.populate('wilayaId', 'name');
 
     sendSuccess(res, 'Order approved successfully', { order });
@@ -417,7 +417,7 @@ router.put('/:id/reject', auth, adminOnly, orderActionValidation, asyncHandler(a
     await order.save();
 
     // Populate references for response
-    await order.populate('propertyId', 'title location pricePerDay images');
+    await order.populate('propertyId', 'title location pricePerDay pricePerMonth images');
     await order.populate('wilayaId', 'name');
 
     sendSuccess(res, 'Order rejected successfully', { order });
@@ -444,7 +444,7 @@ router.put('/:id/process', auth, adminOnly, asyncHandler(async (req, res) => {
     await order.save();
 
     // Populate references for response
-    await order.populate('propertyId', 'title location pricePerDay images');
+    await order.populate('propertyId', 'title location pricePerDay pricePerMonth images');
     await order.populate('wilayaId', 'name');
 
     sendSuccess(res, 'Order marked as processing successfully', { order });
@@ -476,7 +476,7 @@ router.put('/:id', auth, adminOnly, orderActionValidation, asyncHandler(async (r
     await order.save();
 
     // Populate references for response
-    await order.populate('propertyId', 'title location pricePerDay images');
+    await order.populate('propertyId', 'title location pricePerDay pricePerMonth images');
     await order.populate('wilayaId', 'name');
 
     sendSuccess(res, 'Order updated successfully', { order });
@@ -510,7 +510,7 @@ router.post('/:id/employer-notes', auth, employerOnly, [
     await order.addEmployerNote(req.user._id, message);
 
     // Populate references first to get property and wilaya data for notification
-    await order.populate('propertyId', 'title location pricePerDay images');
+    await order.populate('propertyId', 'title location pricePerDay pricePerMonth images');
     await order.populate('wilayaId', 'name');
     await order.populate('employerNotes.employerId', 'firstName lastName');
 

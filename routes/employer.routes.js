@@ -260,7 +260,7 @@ router.get('/reservations',
     try {
       // Get all reservations (employers can see all reservations for properties tab)
       const reservations = await Reservation.find({})
-        .populate('propertyId', 'title description pricePerDay images')
+        .populate('propertyId', 'title description pricePerDay pricePerMonth images')
         .populate('employerId', 'firstName lastName username')
         .sort({ createdAt: -1 });
 
@@ -303,7 +303,7 @@ router.get('/reservations/employer/:employerId',
       
       // Get all reservations (employers can see all reservations regardless of who created them)
       const reservations = await Reservation.find({})
-        .populate('propertyId', 'title description pricePerDay')
+        .populate('propertyId', 'title description pricePerDay pricePerMonth')
         .sort({ createdAt: -1 });
 
       sendSuccess(res, 'Reservations retrieved successfully', {

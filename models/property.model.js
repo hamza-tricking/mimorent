@@ -24,6 +24,10 @@ const propertySchema = new mongoose.Schema({
     required: [true, 'Price per day is required'],
     min: [0, 'Price per day cannot be negative']
   },
+  pricePerMonth: {
+    type: Number,
+    min: [0, 'Price per month cannot be negative']
+  },
   images: [{
     type: String,
     trim: true,

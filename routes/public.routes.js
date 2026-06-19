@@ -211,7 +211,7 @@ router.post('/orders-reservation', createOrderValidation, asyncHandler(async (re
     }
 
     // Populate references for response
-    await order.populate('propertyId', 'title location pricePerDay images');
+    await order.populate('propertyId', 'title location pricePerDay pricePerMonth images');
     await order.populate('wilayaId', 'name');
 
     console.log('✅ Order populated with references');

@@ -30,6 +30,10 @@ const createPropertyValidation = [
     .notEmpty().withMessage('Price per day is required')
     .isNumeric().withMessage('Price per day must be a number')
     .isFloat({ min: 0 }).withMessage('Price per day cannot be negative'),
+  body('pricePerMonth')
+    .optional()
+    .isNumeric().withMessage('Price per month must be a number')
+    .isFloat({ min: 0 }).withMessage('Price per month cannot be negative'),
   body('wilayaId')
     .notEmpty().withMessage('Wilaya ID is required')
     .isMongoId().withMessage('Invalid Wilaya ID'),
@@ -104,6 +108,10 @@ const updatePropertyValidation = [
     .optional()
     .isNumeric().withMessage('Price per day must be a number')
     .isFloat({ min: 0 }).withMessage('Price per day cannot be negative'),
+  body('pricePerMonth')
+    .optional()
+    .isNumeric().withMessage('Price per month must be a number')
+    .isFloat({ min: 0 }).withMessage('Price per month cannot be negative'),
   body('wilayaId')
     .optional()
     .isMongoId().withMessage('Invalid Wilaya ID'),
@@ -157,7 +165,7 @@ router.post('/',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, location, propertyType, pricePerDay, wilayaId, officeId, images, available, reserveTheProperty, locationGoogleMapLink, priceBeforeDiscountPerDay, capacity, targetAudience } = req.body;
+      const { title, description, location, propertyType, pricePerDay, pricePerMonth, wilayaId, officeId, images, available, reserveTheProperty, locationGoogleMapLink, priceBeforeDiscountPerDay, capacity, targetAudience } = req.body;
 
       // Check if wilaya exists
       const wilaya = await Wilaya.findById(wilayaId);
@@ -181,7 +189,8 @@ router.post('/',
         description,
         location,
         propertyType,
-        pricePerDay, 
+        pricePerDay,
+        pricePerMonth: pricePerMonth || undefined,
         wilayaId, 
         officeId,
         images: images || [],
@@ -311,7 +320,7 @@ router.put('/:id',
         return sendError(res, 'Validation failed', 400, errors.array());
       }
 
-      const { title, description, location, propertyType, pricePerDay, wilayaId, officeId, images, available, isReserved, reserveTheProperty, locationGoogleMapLink, priceBeforeDiscountPerDay, capacity, targetAudience } = req.body;
+      const { title, description, location, propertyType, pricePerDay, pricePerMonth, wilayaId, officeId, images, available, isReserved, reserveTheProperty, locationGoogleMapLink, priceBeforeDiscountPerDay, capacity, targetAudience } = req.body;
       const propertyId = req.params.id;
 
       // Check if property exists
@@ -355,6 +364,7 @@ router.put('/:id',
       if (location) updateData.location = location;
       if (propertyType) updateData.propertyType = propertyType;
       if (pricePerDay) updateData.pricePerDay = pricePerDay;
+      if (pricePerMonth) updateData.pricePerMonth = pricePerMonth;
       if (images) updateData.images = images;
       if (available !== undefined) updateData.available = available;
       if (reserveTheProperty) updateData.reserveTheProperty = reserveTheProperty;

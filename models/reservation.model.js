@@ -109,18 +109,15 @@ reservationSchema.pre('save', function(next) {
     return next(new Error('End date must be after start date'));
   }
   
-  // Calculate remaining amount if not provided
-  if (this.isModified('paidAmount') || this.isModified('totalPrice')) {
-    this.remainingAmount = this.totalPrice - this.paidAmount;
-    
-    // Update payment status based on amounts
-    if (this.remainingAmount <= 0) {
-      this.paymentStatus = 'paid';
-    } else if (this.paidAmount > 0) {
-      this.paymentStatus = 'partial';
-    } else {
-      this.paymentStatus = 'pending';
-    }
+  // Recalculate remaining amount and payment status based on totalPrice and paidAmount
+  this.remainingAmount = this.totalPrice - this.paidAmount;
+  
+  if (this.remainingAmount <= 0) {
+    this.paymentStatus = 'paid';
+  } else if (this.paidAmount > 0) {
+    this.paymentStatus = 'partial';
+  } else {
+    this.paymentStatus = 'pending';
   }
   
   next();

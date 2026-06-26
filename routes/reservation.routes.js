@@ -38,13 +38,6 @@ const createReservationValidation = [
     .notEmpty().withMessage('Paid amount is required')
     .isNumeric().withMessage('Paid amount must be a number')
     .isFloat({ min: 0 }).withMessage('Paid amount cannot be negative'),
-  body('remainingAmount')
-    .notEmpty().withMessage('Remaining amount is required')
-    .isNumeric().withMessage('Remaining amount must be a number')
-    .isFloat({ min: 0 }).withMessage('Remaining amount cannot be negative'),
-  body('paymentStatus')
-    .optional()
-    .isIn(['pending', 'partial', 'paid']).withMessage('Invalid payment status'),
   body('status')
     .optional()
     .isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid status'),
@@ -106,13 +99,6 @@ const updateReservationValidation = [
     .optional()
     .isNumeric().withMessage('Paid amount must be a number')
     .isFloat({ min: 0 }).withMessage('Paid amount cannot be negative'),
-  body('remainingAmount')
-    .optional()
-    .isNumeric().withMessage('Remaining amount must be a number')
-    .isFloat({ min: 0 }).withMessage('Remaining amount cannot be negative'),
-  body('paymentStatus')
-    .optional()
-    .isIn(['pending', 'partial', 'paid']).withMessage('Invalid payment status'),
   body('status')
     .optional()
     .isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid status'),
@@ -170,8 +156,6 @@ router.post('/',
         endDate, 
         totalPrice, 
         paidAmount,
-        remainingAmount,
-        paymentStatus,
         status,
         employerId,
         isMarried,
@@ -239,8 +223,6 @@ router.post('/',
         endDate: new Date(endDate),
         totalPrice,
         paidAmount,
-        remainingAmount,
-        paymentStatus: paymentStatus || 'pending',
         status: status || 'pending',
         isMarried,
         numberOfPeople,
@@ -282,7 +264,7 @@ router.post('/',
             startDate: new Date(startDate),
             endDate: new Date(endDate),
             totalPrice: totalPrice,
-            paymentStatus: paymentStatus || 'pending',
+            paymentStatus: reservation.paymentStatus,
             employerId: employerId || null,
             createdById: req.user._id,
             createdByName: creatorName,
@@ -331,7 +313,7 @@ router.post('/',
             endDate,
             totalPrice,
             paidAmount,
-            remainingAmount,
+            remainingAmount: reservation.remainingAmount,
             paymentStatus: reservation.paymentStatus,
             status: reservation.status,
             propertyTitle: property.title,
@@ -470,8 +452,6 @@ router.put('/:id',
         endDate, 
         totalPrice, 
         paidAmount,
-        remainingAmount,
-        paymentStatus,
         status,
         isMarried,
         numberOfPeople,
@@ -537,8 +517,6 @@ router.put('/:id',
       if (endDate) reservation.endDate = new Date(endDate);
       if (totalPrice) reservation.totalPrice = totalPrice;
       if (paidAmount !== undefined) reservation.paidAmount = paidAmount;
-      if (remainingAmount !== undefined) reservation.remainingAmount = remainingAmount;
-      if (paymentStatus) reservation.paymentStatus = paymentStatus;
       if (status) reservation.status = status;
       if (isMarried !== undefined) reservation.isMarried = isMarried;
       if (numberOfPeople !== undefined) reservation.numberOfPeople = numberOfPeople;
@@ -585,8 +563,6 @@ router.put('/:id',
               endDate: endDate !== undefined,
               totalPrice: totalPrice !== undefined,
               paidAmount: paidAmount !== undefined,
-              remainingAmount: remainingAmount !== undefined,
-              paymentStatus: paymentStatus !== undefined,
               status: status !== undefined
             }
           }
@@ -626,8 +602,6 @@ router.put('/:id',
               endDate: endDate !== undefined,
               totalPrice: totalPrice !== undefined,
               paidAmount: paidAmount !== undefined,
-              remainingAmount: remainingAmount !== undefined,
-              paymentStatus: paymentStatus !== undefined,
               status: status !== undefined
             },
             updatedAt: reservation.updatedAt,

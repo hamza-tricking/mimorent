@@ -1,6 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Reservation = require('./models/reservation.model');
+require('./models/property.model');
 
 const mongodbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/mimorent';
 
